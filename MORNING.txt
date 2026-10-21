@@ -1,5 +1,0 @@
-Model mode works: press Load model and Qwen3-0.6B (int8, ~650 MB, WASM) chooses the six recipe answers in the tab, ~6.5 s per question; Rules stay the default and the default page makes no requests.
-All tests pass on branch model-mode in a fresh clone: node 48/48, browser 198/198 (17 new Model checks: fallback, no prompt in any request, guardrails first, injection); no retries.
-Judged: the model does NOT help. It was first on 9/40 (Ivan) and 4/40 (Claude) prompts (24 needed) and beat the rules on 2/7 and 3/7 fallback prompts (5 needed); average rank Rules 1.50/1.30, Model 2.10/2.27, hash 2.40/2.42.
-Kev-0.6B (trained decision model) is ported to JS and matches Python in node and in Chromium (120/120 top picks, max dp 0.0168), but its 891 MB export needs a public host before it can be offered on the page (BLOCKERS-r23.md).
-This session pushed or deployed nothing (note: main was pushed to your GitHub remote at 19:45 from outside this session; model-mode is unpushed); no weights or screenshots committed; repo 4.85 MB; no other repository or worktree changed.
