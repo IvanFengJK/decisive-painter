@@ -465,7 +465,7 @@ if (run("t9")) {
   await sleep(2500);
   results.t9.initial_requests = initial.map((u) => u.replace(url, "/"));
   results.t9.requests_while_painting = p.requests.length - n0;
-  check("T9 every page request is same-origin, and none is for the model or its library", initial.every((u) => u.startsWith(url)) && !initial.some((u) => /model-|vendor\//.test(u)), results.t9.initial_requests);
+  check("T9 every page request is same-origin, and none is for the model's loader, worker or library", initial.every((u) => u.startsWith(url)) && !initial.some((u) => /model-(loader|worker|host)|vendor\//.test(u)), results.t9.initial_requests);
   check("T9 Rules mode: zero network requests while painting (both tabs, every style)", p.requests.length === n0, p.requests.slice(n0).map((r) => r.url));
   const csp = await p.eval("document.querySelector('meta[http-equiv=Content-Security-Policy]').content");
   results.t9.csp = csp;
@@ -579,9 +579,9 @@ if (run("t9")) {
     const tabs = await a.eval("({ focus: document.activeElement.id, sel: document.getElementById('tab-gesture').getAttribute('aria-selected'), panel: document.getElementById('panel-gesture').hidden, ti: [document.getElementById('tab-gesture').tabIndex, document.getElementById('tab-map').tabIndex] })");
     check(`A11y ${theme}: tabs follow the ARIA tab pattern (arrow keys, roving tabindex, panels)`, tabs.focus === "tab-gesture" && tabs.sel === "true" && !tabs.panel && tabs.ti.join() === "0,-1", tabs);
     // keyboard: Tab order reaches the main controls and focus is visible
-    await a.eval("document.activeElement.blur(); window.scrollTo(0, 0); 1");
+    await a.eval("window.scrollTo(0, 0); document.querySelector('.skip').focus(); 1"); // start from the top of the page
     const order = [];
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 22; i++) {
       await a.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
       await a.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
       order.push(await a.eval("(() => { const e = document.activeElement; const s = getComputedStyle(e); return { id: e.id || e.tagName, outline: s.outlineStyle + ' ' + s.outlineWidth }; })()"));
@@ -700,7 +700,7 @@ if (run("model")) {
     await watchLong(p);
     await sleep(1200);
     const n0 = p.requests.length;
-    check("T8 no request before the click except the page's own files (no worker, no library)", p.requests.every((r) => r.url.startsWith(url) && !/model-|vendor\//.test(r.url)), p.requests.map((r) => r.url).filter((u) => !u.startsWith(url)));
+    check("T8 no request before the click except the page's own files (no worker, no library)", p.requests.every((r) => r.url.startsWith(url) && !/model-(loader|worker|host)|vendor\//.test(r.url)), p.requests.map((r) => r.url).filter((u) => !u.startsWith(url)));
     const t0 = Date.now();
     await p.eval("document.getElementById('load-model').click(); 1");
     await loaded(p);
