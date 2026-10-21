@@ -1,0 +1,53 @@
+{
+ "made_with": "v1.0.0 (d34001d), before the Round 21 changes",
+ "links": [
+  {
+   "hash": "#v=1&mo=1&ha=1&hu=5&ke=2&sa=1&co=1&sy=6&sr=1&su=2&s=482130&b=30&k=paint&p=w",
+   "skin": "paint",
+   "mode": "weighted",
+   "budget": 30,
+   "sha256": "e1741517165e19775496e597af412a8a3c2d864c6ba3c5de7e4bc74a09eb966e",
+   "node_equal": true
+  },
+  {
+   "hash": "#v=1&mo=2&ha=1&hu=2&ke=0&sa=2&co=3&sy=7&sr=1&su=6&s=7&b=50&k=pixel&p=w",
+   "skin": "pixel",
+   "mode": "weighted",
+   "budget": 50,
+   "sha256": "4e9c206bf39ffff0b511d6d52b34e6b5597a8bb4586e05ca24472e2d504b6d6c",
+   "node_equal": true
+  },
+  {
+   "hash": "#v=1&mo=4&ha=3&hu=0&ke=2&sa=2&co=4&sy=6&sr=1&su=7&s=999999&b=20&k=sketch&p=w",
+   "skin": "sketch",
+   "mode": "weighted",
+   "budget": 20,
+   "sha256": "afcc9c1dec1a1b1f26f57071eef1c9dc35ca5344ee92a648c21f5c3c8ed6ad4e",
+   "node_equal": true
+  },
+  {
+   "hash": "#v=1&mo=0&ha=0&hu=3&ke=1&sa=1&co=6&sy=9&sr=0&su=6&s=0&b=10&k=paint&p=t",
+   "skin": "paint",
+   "mode": "top",
+   "budget": 10,
+   "sha256": "183287b3903f86acd4ef05d176a05b838864e09d5f5a3cb8d2f40dcc92e72e7d",
+   "node_equal": true
+  },
+  {
+   "hash": "#v=1&mo=3&ha=1&hu=1&ke=2&sa=1&co=2&sy=6&sr=4&su=7&s=31337&b=40&k=pixel&p=t",
+   "skin": "pixel",
+   "mode": "top",
+   "budget": 40,
+   "sha256": "d9ea33b615149f5f2213050107337088e848bb583dee27944ac3ee13142db430",
+   "node_equal": true
+  },
+  {
+   "hash": "#v=1&mo=2&ha=0&hu=6&ke=1&sa=0&co=5&sy=1&sr=0&su=9&s=123456&b=30&k=sketch&p=t",
+   "skin": "sketch",
+   "mode": "top",
+   "budget": 30,
+   "sha256": "a3c8baea48c720ee38d3f7a1a1644c986afe7f43b3f409eaf8e4b60d96657b36",
+   "node_equal": true
+  }
+ ]
+}

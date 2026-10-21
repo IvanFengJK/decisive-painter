@@ -3,6 +3,7 @@
 // Uses the installed Chromium through tests/lib/cdp.mjs. Run: node tests/browser.mjs   (about 5 minutes)
 // Writes out/shots/*.png and out/browser-results.json; exits 1 if any check fails.
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { Browser } from "./lib/cdp.mjs";
@@ -65,6 +66,27 @@ const canvasInfo = (p) => p.eval(`(async () => {
   return { w: c.width, painted: painted / (d.length / 4), colours: m.colourCount(d),
     sha: [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, '0')).join('') };
 })()`);
+// records the odds panel at every mark (a MutationObserver installed by the test, not by the page)
+const watchOdds = (p) => p.eval(`(() => { window.__odds = {}; const el = document.getElementById('odds');
+  const snap = () => { const step = Number(el.dataset.step); if (!step) return;
+    window.__odds[step] = [...el.querySelectorAll('.odds-card')].map((c) => ({ q: c.dataset.q, rows: [...c.querySelectorAll('li')].map((li) =>
+      ({ o: li.dataset.option, p: Number(li.dataset.p), chosen: li.classList.contains('chosen'), other: li.classList.contains('other') })) })); };
+  if (window.__obs) window.__obs.disconnect(); window.__obs = new MutationObserver(snap);
+  window.__obs.observe(el, { subtree: true, childList: true, attributes: true, characterData: true }); return 1; })()`);
+const QIDS = ["gesture", "place", "size", "medium", "colour", "fill", "weight"];
+/** Problems with one recorded mark: 7 questions, non-empty, sums to 1 (+-1e-6), exactly one picked option listed. */
+function oddsProblems(cards) {
+  const bad = [];
+  if (!cards || cards.map((c) => c.q).join() !== QIDS.join()) return ["questions " + (cards || []).map((c) => c.q).join()];
+  for (const c of cards) {
+    const sum = c.rows.reduce((a, r) => a + r.p, 0);
+    const picked = c.rows.filter((r) => r.chosen);
+    if (!c.rows.length) bad.push(`${c.q}: empty`);
+    if (Math.abs(sum - 1) > 1e-6) bad.push(`${c.q}: sum ${sum}`);
+    if (picked.length !== 1 || picked[0].other || !picked[0].o) bad.push(`${c.q}: picked ${JSON.stringify(picked)}`);
+  }
+  return bad;
+}
 const layout = (p) => p.eval("({ sw: document.documentElement.scrollWidth, iw: innerWidth })");
 async function shot(p, name, desc) {
   writeFileSync(`${SHOTS}${name}.png`, await p.screenshot());
@@ -84,15 +106,26 @@ if (only === "all" || only === "t1") {
     for (const theme of ["light", "dark"]) {
       const tag = `${view}-${theme}`;
       const p = await open(view, theme);
-      await shot(p, `${tag}-start`, "the empty page before painting");
+      const top = await p.eval(`({ h1: document.querySelector('h1').textContent, tag: document.querySelector('.tagline').textContent, title: document.title,
+        ex: document.getElementById('explainer').innerText, d: document.getElementById('badge-decider').textContent, m: document.getElementById('badge-model').textContent })`);
+      check(`T1 ${tag}: name, tagline and title`, top.h1 === "Menu Painter" && top.tag === "A painter that only picks from menus." && /^Menu Painter/.test(top.title), top);
+      check(`T1 ${tag}: explainer above the canvas`, top.ex.replace(/\s+/g, " ").trim() === "No image is generated. For every mark, the director answers multiple-choice questions with probabilities. Code draws the result.", top.ex);
+      check(`T1 ${tag}: badge names the rules and an empty model slot`, top.d === "Decision-maker: Rules (authored tables)" && top.m === "Model: none loaded", top);
+      await shot(p, `${tag}-start`, "the empty page before painting: name, tagline, explainer, badge, empty odds panel");
       await paint(p, "a lighthouse in a storm");
+      const oc = await p.eval("({ step: document.getElementById('odds').dataset.step, cards: document.querySelectorAll('.odds-card').length, title: document.getElementById('odds-title').textContent })");
+      check(`T1 ${tag}: odds panel shows the last mark's 7 questions`, oc.step === "30" && oc.cards === 7, oc);
+      await p.eval("document.getElementById('show-state').click(); 1");
+      const st = await p.eval("({ open: document.getElementById('sees').open, focus: document.activeElement.id })");
+      check(`T1 ${tag}: one tap on "State text" opens the state text`, st.open && st.focus === "state-text", st);
+      await p.eval("window.scrollTo(0, 0); 1");
       for (const skin of ["paint", "pixel", "sketch"]) {
         if (skin !== "paint") await setSkin(p, skin);
         const c = await canvasInfo(p);
         const l = await layout(p);
         check(`T1 ${tag} ${skin}: canvas non-blank`, c.painted > 0.05, `${(c.painted * 100).toFixed(0)}% painted, ${c.colours} colours`);
         check(`T1 ${tag} ${skin}: no horizontal scroll`, l.sw <= l.iw, l);
-        await shot(p, `${tag}-${skin}`, `Paint mode, lighthouse prompt, ${skin} skin`);
+        await shot(p, `${tag}-${skin}`, `Paint mode, lighthouse prompt, ${skin} skin, with the explainer, badge and odds panel`);
       }
       await setSkin(p, "paint");
       // the picker: an unknown scene opens it and says so
@@ -123,6 +156,16 @@ if (only === "all" || only === "t1") {
       const dc = await canvasInfo(p);
       check(`T1 ${tag}: director mode paints the visitor's marks`, dc.painted > 0.02, `${(dc.painted * 100).toFixed(0)}%`);
       check(`T1 ${tag}: director mode read-back updated`, /step 4 of 30/.test(await p.eval("document.getElementById('state-text').textContent")));
+      await p.waitFor("document.getElementById('odds').dataset.step === '4'");
+      const hd = await p.eval(`({ t: document.getElementById('odds-mark').textContent, d: document.getElementById('badge-decider').textContent,
+        cards: [...document.querySelectorAll('.odds-card')].map((c) => ({ q: c.dataset.q, rows: [...c.querySelectorAll('li')].map((li) =>
+          ({ o: li.dataset.option, p: Number(li.dataset.p), chosen: li.classList.contains('chosen'), other: li.classList.contains('other') })) })),
+        sel: document.getElementById('dq-gesture').value })`);
+      check(`T1 ${tag}: Be the director shows the rules' odds before choosing`, /mark 4 of 30 \(you choose\)/.test(hd.t) && oddsProblems(hd.cards).length === 0
+        && hd.cards[0].rows.find((r) => r.chosen).o === hd.sel, { t: hd.t, problems: oddsProblems(hd.cards) });
+      check(`T1 ${tag}: badge names the visitor in Be the director`, hd.d === "Decision-maker: You", hd.d);
+      await p.eval("document.getElementById('odds').scrollIntoView(); 1");
+      await shot(p, `${tag}-director-odds`, "Be the director: the rules' odds for mark 4, the visitor's current choice marked");
       await p.eval("document.getElementById('director-ui').scrollIntoView(); 1");
       await shot(p, `${tag}-director`, "Be the director: mark 4 menus with dice and the rules' odds, after three chosen marks");
       check(`T1 ${tag}: no console errors (index)`, p.errors.length === 0, p.errors.slice(0, 3));
@@ -168,7 +211,12 @@ if (only === "all" || only === "t2") {
 if (only === "all" || only === "t3") {
   const p = await open("desktop", "light");
   for (const s of SCENES) {
+    await watchOdds(p);
     const ms = await paint(p, s);
+    const log = await p.eval("window.__odds");
+    const bad = [];
+    for (let step = 1; step <= 30; step++) for (const b of oddsProblems(log[step])) bad.push(`mark ${step} ${b}`);
+    check(`T3 "${s}": odds panel on all 30 marks (7 questions, sums to 1, picked option listed)`, bad.length === 0 && Object.keys(log).length === 30, bad.slice(0, 3));
     const row = { prompt: s, paint_ms: ms };
     row.paint = (await canvasInfo(p)).colours;
     const cp = await canvasInfo(p);
@@ -211,6 +259,31 @@ if (only === "all" || only === "t4") {
     results.t4.push({ skin, hash, length: hash.length, same: sa === sb });
     check(`T4 ${skin}: share link round trip gives identical pixels`, sa === sb, `${hash.length} chars: ${hash}`);
     check(`T4 ${skin}: link carries no free text`, !/desert|dunes|moon/i.test(hash));
+  }
+  const fixture = JSON.parse(readFileSync(new URL("./fixtures/v1.0.0-links.json", import.meta.url), "utf8"));
+  for (const link of fixture.links) {
+    const p = await open("desktop", "light", link.hash);
+    await waitDone(p, 0);
+    const sha = (await canvasInfo(p)).sha;
+    await p.close();
+    check(`T4 v1.0.0 link opens the same pixels as before (${link.skin}, ${link.mode}, ${link.budget} marks)`, sha === link.sha256, link.hash);
+  }
+  {
+    const p = await open("desktop", "light");
+    await paint(p, "a lighthouse in a storm");
+    const a = await p.eval("({ seed: document.getElementById('seed').value, hash: location.hash, prompt: document.getElementById('prompt').value })");
+    const ca = (await canvasInfo(p)).sha;
+    const before = await doneId(p);
+    await p.eval("document.getElementById('again').click(); 1");
+    await waitDone(p, before);
+    const b = await p.eval("({ seed: document.getElementById('seed').value, hash: location.hash, prompt: document.getElementById('prompt').value, notice: document.getElementById('notice').textContent, help: document.getElementById('again-help').textContent })");
+    const cb = (await canvasInfo(p)).sha;
+    const look = (h) => h.replace(/&s=\d+/, "");
+    const seedOf = (h) => /&s=(\d+)/.exec(h)[1];
+    check("T4 Ask it again: same words and look, new seed, new painting", b.prompt === a.prompt && seedOf(b.hash) !== seedOf(a.hash)
+      && b.seed === seedOf(b.hash) && cb !== ca && look(a.hash) === look(b.hash) && /^Asked again with seed \d+/.test(b.notice), { a, b });
+    check("T4 Ask it again explains where the variety comes from", /picking by the odds/.test(b.help), b.help);
+    await p.close();
   }
   const base = "mo=0&ha=0&hu=0&ke=0&sa=0&co=0&sy=0&sr=0&su=0";
   const crafted = [
@@ -342,7 +415,7 @@ if (only === "all" || only === "a11y") {
   for (const theme of ["light", "dark"]) {
     const p = await open("desktop", theme);
     await paint(p, "a lighthouse in a storm");
-    const names = await p.eval(`[...document.querySelectorAll('button, input, select, textarea, [role=tab], a, canvas, pre[tabindex]')].filter((e) => e.offsetParent !== null || e.tagName === 'CANVAS').map((e) => {
+    const names = await p.eval(`[...document.querySelectorAll('button, input, select, textarea, [role=tab], a, canvas, pre[tabindex], [role=region][tabindex]')].filter((e) => e.offsetParent !== null || e.tagName === 'CANVAS').map((e) => {
       const lab = e.getAttribute('aria-label') || (e.getAttribute('aria-labelledby') || '').split(' ').map((i) => document.getElementById(i)?.textContent || '').join(' ').trim()
         || (e.id && document.querySelector('label[for="' + e.id + '"]')?.textContent) || e.closest('label')?.textContent || e.textContent || e.title || e.placeholder;
       return { el: e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''), name: (lab || '').trim().slice(0, 40) };
@@ -356,7 +429,7 @@ if (only === "all" || only === "a11y") {
     const L = (c) => c.map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
     const cr = (a, b) => { const x = L(hex(a)), y = L(hex(b)); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
     const pairs = [["fg", "bg", 4.5], ["fg", "surface", 4.5], ["fg", "surface2", 4.5], ["muted", "surface", 4.5], ["muted", "bg", 4.5],
-      ["onAccent", "accent", 4.5], ["accent", "surface", 3], ["focus", "surface", 3], ["focus", "bg", 3], ["line", "surface", 3], ["warnFg", "warnBg", 4.5]];
+      ["onAccent", "accent", 4.5], ["accent", "surface", 3], ["focus", "surface", 3], ["focus", "bg", 3], ["line", "surface", 3], ["warnFg", "warnBg", 4.5], ["bg", "fg", 4.5], ["muted", "surface2", 4.5]];
     const table = pairs.map(([a, b, need]) => ({ pair: `${a} on ${b}`, ratio: Number(cr(vars[a], vars[b]).toFixed(2)), need }));
     results.a11y[`contrast_${theme}`] = table;
     check(`A11y ${theme}: contrast AA for text and 3:1 for UI parts`, table.every((t) => t.ratio >= t.need), table.filter((t) => t.ratio < t.need));
