@@ -47,6 +47,19 @@
   <p><strong>The model slot is empty today: a rules table makes the choices.</strong> The Director interface is where a
     model plugs in, and the badge above the painting names whatever is deciding.</p>
 
+  <h2>Model mode (optional)</h2>
+  <p>Model mode is off until you press <strong>Load model</strong>. That downloads a <strong>general small language
+    model</strong> (Qwen3-0.6B, about 600–650 MB, Apache-2.0) and runs it in this tab, on WebGPU if your browser has it,
+    otherwise on WebAssembly. It answers only the six recipe questions (mood, colour harmony, hue family, value key,
+    saturation and composition) from your words. Every mark is still decided by the rules.</p>
+  <p>It is <strong>not a trained decision model</strong>: it scores the lettered options of each question from its
+    next-word probabilities, asks each question with the options in both orders and averages them, and then applies the
+    page's temperature. A no-collapse guard means <strong>no single option may have more than 85% before the
+    draw</strong>, so it never shows itself as certain. Whether it chooses better recipes than the rules is being
+    measured; it may not.</p>
+  <p>Your words still pass the same guardrails first, and they are never sent anywhere: the downloads are only the
+    model and library files, from huggingface.co (and its file CDN) and cdn.jsdelivr.net.</p>
+
   <h2>What happens to what you type</h2>
   <ul>
     <li>It stays in this page. The page makes no network requests while painting: no analytics, no cookies,

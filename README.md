@@ -78,6 +78,23 @@ from its choices. That is what share links and Replay do.
 and the badge above the painting names whatever is deciding ("Decision-maker: Rules (authored tables)", "Model: none
 loaded").
 
+## Model mode (optional)
+
+Press **Load model** to download a general small language model, **Qwen3-0.6B** (ONNX build `onnx-community/Qwen3-0.6B-ONNX`,
+Apache-2.0). It is about 650 MB on WebAssembly (int8) or about 600 MB on WebGPU (q4f16), and it runs in the tab with the
+vendored transformers.js 4.3.1. It answers the **six upfront recipe questions** (mood, harmony, hue family, value key,
+saturation, composition) from the visitor's words. Each option is scored by its letter's next-token probability, with
+both option orders averaged, the page's temperature applied, and no option allowed above 0.85. The per-mark choices stay
+with the rules.
+
+- It is a general model scoring the options, **not a trained decision model**, and the badge says so.
+- The default page still makes **no network requests**. The download starts only after the click, and the visitor's
+  words never leave the tab.
+- If it cannot load, the page says why and keeps Rules on.
+- The details and the CSP changes are in [docs/DIRECTOR.md](docs/DIRECTOR.md).
+
+Whether it picks better recipes than the rules is an open question; see the quality sheet in the project notes.
+
 ## How it works
 
 - On the page: a three-line explainer and the decision-maker badge above the canvas; the odds panel under it (one card per

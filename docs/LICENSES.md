@@ -7,7 +7,10 @@ site's code, tables, word lists, recipes, guardrail lists and wording were writt
 earlier rounds: the Round 12 renderer and lists (`harness/render.py`, `harness/lists.py`), the Round 14 phase menus and
 code rules, and the Round 15 palette engine. Licence: MIT (see `LICENSE`).
 
-No third-party code, fonts, images, libraries or scripts are included or loaded. The site needs no packages; the tests use
+One third-party file is included: `web/vendor/transformers-4.3.1.min.js` (transformers.js 4.3.1, Apache License 2.0;
+licence in `web/vendor/LICENSE-transformers.txt`), loaded only after the visitor presses Load model. Model mode then
+fetches onnxruntime-web (MIT) and Qwen3-0.6B (Apache-2.0) at run time; neither is included. No fonts or images from
+others are included. The site needs no packages; the tests use
 only node's standard library and an already-installed Chromium; the Python harness needs numpy and Pillow
 (`harness/requirements.txt`), which are installed separately and not included.
 
