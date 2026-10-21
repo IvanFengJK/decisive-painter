@@ -21,7 +21,7 @@ const PACE_MS = 90; // pause between marks so the painting can be watched (0 wit
 const rules = new RuleDirector();
 // Model mode: nothing of the model (not even its loader) is fetched until the visitor presses "Load model".
 const slot = new ModelSlot((opts) => import("./model-loader.js").then((m) => m.loadModel(opts)));
-const MODEL_MB = "gpu" in navigator ? 600 : 650; // WebGPU uses the q4f16 build, WASM the int8 build
+let MODEL_MB = 650; // the WASM (int8) build; 600 when a WebGPU adapter exists (q4f16), checked at start without any request
 const guard = new DisabledGuard();
 
 const app = {
@@ -476,7 +476,7 @@ async function startPainting() {
       if (token.cancelled) return;
       t0 = performance.now();
     }
-    if (app.mode === "paint" && director === rules) {
+    if (app.mode === "paint" && (director === rules || director.kind === "model")) { // model mode's marks are the rules'
       app.msPerMark[app.skin] = Math.round(0.5 * app.msPerMark[app.skin] + (0.5 * compute) / app.budget);
       history.replaceState(null, "", shareOf());
     }
@@ -852,6 +852,9 @@ function wire() {
   });
   $("again").addEventListener("click", askAgain);
   $("load-model").textContent = `Load model (about ${MODEL_MB} MB)`;
+  Promise.resolve(navigator.gpu?.requestAdapter?.()).then((a) => {
+    if (a && slot.state === "empty") $("load-model").textContent = `Load model (about ${(MODEL_MB = 600)} MB)`;
+  }, () => {});
   $("load-model").addEventListener("click", loadModelClicked);
   for (const el of document.querySelectorAll('input[name="decider"]')) {
     el.addEventListener("change", () => {
