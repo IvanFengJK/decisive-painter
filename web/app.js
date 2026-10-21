@@ -187,7 +187,7 @@ function fillLookFields(look) {
   for (const f of Object.keys(LOOK_FIELDS)) $(`look-${f}`).value = look[f];
 }
 
-// ------------------------------------------------------------------------------------------------ be the art director
+// ------------------------------------------------------------------------------------------------ be the director
 const Q_HINT = {
   gesture: "The kind of mark: a shape or a set of lines.",
   place: "Where it goes: a named part of the composition or one cell of the 5x5 grid.",
@@ -467,7 +467,7 @@ function downloadCanvas(cv, name) {
 }
 
 const shareOf = () => (!app.look ? "" : encodeShare({ look: app.look, seed: app.seed, budget: app.budget, skin: app.skin, mode: app.pick }));
-const fileName = (o) => `art-director-${o.look.hue}-${o.look.mood}-seed${o.seed}-${o.budget}marks-${o.skin}.png`;
+const fileName = (o) => `menu-painter-${o.look.hue}-${o.look.mood}-seed${o.seed}-${o.budget}marks-${o.skin}.png`;
 
 async function copyLink() {
   const url = location.href.split("#")[0] + shareOf();

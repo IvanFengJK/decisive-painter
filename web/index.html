@@ -6,8 +6,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Type a scene and watch an art-director harness paint it mark by mark. Rules and authored recipes, no AI model.">
-<title>Art Director</title>
+<meta name="description" content="Menu Painter: A painter that only picks from menus. For every mark, a director answers multiple-choice questions with probabilities and code draws the result. Rules and authored tables, no AI model.">
+<title>Menu Painter: a painter that only picks from menus</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
 <script type="module" src="app.js"></script>
@@ -15,7 +15,10 @@
 <body>
 <a class="skip" href="#prompt">Skip to the scene box</a>
 <header class="top">
-  <h1>Art Director</h1>
+  <div class="brand">
+    <h1>Menu Painter</h1>
+    <p class="tagline">A painter that only picks from menus.</p>
+  </div>
   <nav aria-label="Pages"><a href="about.html">About</a></nav>
 </header>
 
@@ -43,7 +46,7 @@
   <section class="sheet" aria-label="Controls">
     <div class="tabs" role="tablist" aria-label="Mode">
       <button type="button" role="tab" id="tab-paint" aria-selected="true" aria-controls="panel-mode">Watch it paint</button>
-      <button type="button" role="tab" id="tab-director" aria-selected="false" aria-controls="panel-mode" tabindex="-1">Be the art director</button>
+      <button type="button" role="tab" id="tab-director" aria-selected="false" aria-controls="panel-mode" tabindex="-1">Be the director</button>
     </div>
 
     <div id="panel-mode" role="tabpanel" aria-labelledby="tab-paint">

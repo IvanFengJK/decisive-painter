@@ -1,4 +1,6 @@
-# Art Director
+# Menu Painter
+
+*A painter that only picks from menus.*
 
 Type a scene, such as "a lighthouse in a storm", and watch it painted mark by mark. Before every mark an "art director"
 harness writes a short text state (the request, the look, the progress, a 5x5 grid of words read back from the real
@@ -66,7 +68,7 @@ python harness/render_decisions.py harness/example-decisions.json frozen.png --f
   message and a look picked from a hash of the text, which the visitor can change.
 - `web/render.js`: a software rasteriser, so the same scene, seed, marks and skin give the same pixels in every browser.
   Share links carry only option numbers (no text).
-- Three skins: Paint, Pixel and Sketch. "Be the art director" mode lets the visitor answer the questions.
+- Three skins: Paint, Pixel and Sketch. "Be the director" mode lets the visitor answer the questions.
 - Choices and their reasons: [docs/DECISIONS.md](docs/DECISIONS.md). How the project got here:
   [docs/HISTORY.md](docs/HISTORY.md).
 

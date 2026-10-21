@@ -61,7 +61,7 @@ Last marks: 21. block at left wing, secondary; 22. ...
   expects `{ "answers": [{ "id": "...", "probs": {...} }] }`. 20 s timeout, no credentials, no referrer. The page's
   CSP allows `connect-src` to the same origin and to `http://localhost:*` / `http://127.0.0.1:*` only; to use a remote
   server, add its origin to the CSP in `index.html`.
-- `HumanDirector` ("Be the art director"): the visitor's choices as one-hot answers; the dice ask the RuleDirector.
+- `HumanDirector` ("Be the director"): the visitor's choices as one-hot answers; the dice ask the RuleDirector.
 
 ### Example: a WebGPU model in the browser
 

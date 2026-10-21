@@ -112,7 +112,7 @@ if (only === "all" || only === "t1") {
       check(`T1 ${tag}: nothing painted after a block`, c.painted < 0.001);
       await p.eval("window.scrollTo(0, 0); 1");
       await shot(p, `${tag}-blocked`, "a blocked prompt: neutral sentence, blank paper, box still editable");
-      // be the art director
+      // be the director
       await p.eval("document.getElementById('tab-director').click(); 1");
       await p.eval(`document.getElementById('prompt').value=${js("a red barn on a hill")}; document.getElementById('paint').click(); 1`);
       await p.waitFor("!document.getElementById('director-ui').hidden && document.getElementById('d-step').textContent === '1'");
@@ -124,7 +124,7 @@ if (only === "all" || only === "t1") {
       check(`T1 ${tag}: director mode paints the visitor's marks`, dc.painted > 0.02, `${(dc.painted * 100).toFixed(0)}%`);
       check(`T1 ${tag}: director mode read-back updated`, /step 4 of 30/.test(await p.eval("document.getElementById('state-text').textContent")));
       await p.eval("document.getElementById('director-ui').scrollIntoView(); 1");
-      await shot(p, `${tag}-director`, "Be the art director: mark 4 menus with dice, after three chosen marks");
+      await shot(p, `${tag}-director`, "Be the director: mark 4 menus with dice and the rules' odds, after three chosen marks");
       check(`T1 ${tag}: no console errors (index)`, p.errors.length === 0, p.errors.slice(0, 3));
       await p.close();
       const a = await open(view, theme, "", { path: "about.html" });

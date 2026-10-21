@@ -1,6 +1,6 @@
 # How this project got here
 
-Art Director started as an attempt to put a small language model in a browser and have it paint a typed scene, in the
+Menu Painter started as an attempt to put a small language model in a browser and have it paint a typed scene, in the
 spirit of Jev (a closed model that paints by answering questions) and of the idea credited below. It ran for many
 research rounds. Each round had a pre-registered test, usually a blind sheet where paintings from a model
 were ranked against "no-model controls": the same harness with uniform-random answers, or with fixed priors that never
