@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' http://localhost:* http://127.0.0.1:* https://huggingface.co https://*.hf.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Decisive Painter. Decisions, not diffusion: a painter that picks from menus. For every mark, a director answers multiple-choice questions with probabilities and code draws the result. Rules and authored tables, no AI model.">
+<meta name="description" content="Decisive Painter. Decisions, not diffusion: a painter that picks from menus. For every mark, a director answers multiple-choice questions with probabilities and code draws the result. Rules and authored tables by default; an optional small model can choose the recipe once you load it.">
 <title>Decisive Painter: decisions, not diffusion</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
@@ -83,7 +83,7 @@
                placeholder="a harbour at dawn" aria-describedby="prompt-help">
         <button type="submit" id="paint" class="primary">Paint</button>
       </form>
-      <p id="prompt-help" class="help">Up to 80 characters. The page paints abstract, scene-like pictures from rules, not an AI model.</p>
+      <p id="prompt-help" class="help">Up to 80 characters. The page paints abstract, scene-like pictures. By default rules decide everything; in Model mode a small model chooses the recipe.</p>
       <fieldset id="decider" class="decider">
         <legend>Recipe decided by</legend>
         <div class="seg">
@@ -172,7 +172,7 @@
 </main>
 
 <footer class="foot">
-  <p>Rules and authored recipes, no AI model. Nothing you type leaves this page. <a href="about.html">About</a></p>
+  <p>Rules and authored recipes by default; Model mode is optional and runs a small model in this tab. Nothing you type leaves this page. <a href="about.html">About</a></p>
 </footer>
 </body>
 </html>

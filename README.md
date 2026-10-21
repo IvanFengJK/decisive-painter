@@ -5,11 +5,12 @@
 Type a scene, such as "a lighthouse in a storm", and watch it painted mark by mark. Before every mark an "art director"
 harness writes a short text state (the request, the look, the progress, a 5x5 grid of words read back from the real
 pixels) and asks a **Director** a few typed questions: which mark, where, which colour, how heavy. A seeded renderer
-then draws the answer. The live Director is **rules plus authored recipes: there is no AI model inside**, and the
+then draws the answer. The default Director is **rules plus authored recipes: there is no AI model inside unless you load the
+optional Model mode** (below), and the
 paintings are abstract and scene-like, not pictures of the thing. The Director is a small interface, so a model
 (for example a WebGPU model in the browser, or your own server) can be plugged in without changing the page or the
-renderer. The page is plain HTML, CSS and ES modules, about 160 KB, with no build step, no third-party scripts, no
-analytics and no cookies.
+renderer. The page is plain HTML, CSS and ES modules, about 190 KB, with no build step, no analytics and no cookies, and no
+third-party scripts until Model mode loads its vendored copy of transformers.js after the click.
 
 ![The Paint skin in the light theme: "a lighthouse in a storm" in 30 marks, with the explainer, the decision-maker badge and the odds for the last mark](docs/img/paint-desktop-light.png)
 
