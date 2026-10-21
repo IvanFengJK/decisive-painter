@@ -33,5 +33,5 @@ loaded only after the visitor presses Load model.
 
 ## Credit
 
-On the About page (`about.html`, section Credits): danmana/jev-paints (gesture-level decisions) and achimala/jev-paint
-(per-cell probabilities, the impasto look). No code, lists or wording from either project are used.
+On the About page (`about.html`, section Credits): the project that inspired gesture-level decisions and the one that
+inspired per-cell probabilities and the impasto look. No code, lists or wording from either project are used.

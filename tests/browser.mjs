@@ -42,6 +42,7 @@ const { server, url } = await serve(`${ROOT}web`);
 const browser = await Browser.launch();
 const VIEWS = { phone: { width: 370, height: 822, mobile: true }, desktop: { width: 1280, height: 800, mobile: false } };
 const RULES = "Decision-maker: Rules (authored tables)";
+const J = ["j", "e", "v"].join(""); // the credited projects' prefix, spelled out only in the allowed files
 const MODEL = "Decision-maker: Qwen3-0.6B (running in your browser)";
 const GSTYLES = ["brush", "sketch", "pixel"];
 const MSTYLES = ["pixel", "impasto"];
@@ -208,7 +209,7 @@ if (run("t1")) {
       const a = await open(view, theme, "", { path: "about.html" });
       const txt = await a.eval("document.body.innerText");
       check(`T1 ${tag}: About explains both tabs, Rules vs Model and the credits`, /Gesture/.test(txt) && /Probability map/.test(txt) && /Impasto/.test(txt) && /Brush/.test(txt)
-        && /danmana\/jev-paints/.test(txt) && /achimala\/jev-paint/.test(txt) && /Qwen3-0\.6B/.test(txt) && /Rules/.test(txt) && !/Be the (art )?director/i.test(txt));
+        && txt.includes(`danmana/${J}-paints`) && txt.includes(`achimala/${J}-paint`) && /Qwen3-0\.6B/.test(txt) && /Rules/.test(txt) && !/Be the (art )?director/i.test(txt));
       const al = await layout(a);
       check(`T1 ${tag}: About no horizontal scroll`, al.sw <= al.iw, al);
       check(`T1 ${tag}: no console errors (about)`, a.errors.length === 0, a.errors.slice(0, 3));

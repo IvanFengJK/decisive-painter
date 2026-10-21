@@ -1,0 +1,3 @@
+# web/vendor/transformers-4.3.1.min.js is the unchanged transformers.js 4.3.1 release file (SHA-256 in web/LICENSES.md);
+# a minified identifier there matches the generic-api-key pattern. It is not a secret.
+e7cfc0b623908fb6b666fbce72c06058e6fcd793:web/vendor/transformers-4.3.1.min.js:generic-api-key:3

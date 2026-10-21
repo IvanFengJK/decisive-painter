@@ -35,9 +35,6 @@ only node's standard library and an already-installed Chromium; the Python harne
 
 ## Credit
 
-- danmana/jev-paints (github.com/danmana/jev-paints): the idea of gesture-level decisions (the Gesture tab).
-- achimala/jev-paint (github.com/achimala/jev-paint): the idea of per-cell colour probabilities and the impasto look (the
-  Probability map tab).
-
-Both are credited in `README.md` and on the About page (`web/about.html`). No code, lists or wording from either project
-are used; their source was not read.
+The two projects whose ideas this site uses (gesture-level decisions for the Gesture tab; per-cell colour probabilities
+and the impasto look for the Probability map tab) are credited in `README.md` and on the About page (`web/about.html`).
+No code, lists or wording from either project are used; their source was not read.
