@@ -9,7 +9,8 @@
 // The harness never trusts an answer: every one is validated against the fixed option lists before it is used, and
 // a pick is always one of those options, so nothing a director returns can reach the page as text or markup.
 import { Rng, seedString } from "./rng.js";
-import { COMPOSITIONS, SkinPainter, enginePalette, phaseOf, readback } from "./render.js";
+import { COMPOSITIONS, enginePalette, phaseOf, readback } from "./render.js";
+import { GesturePainter } from "./styles.js";
 import { LOOK_FIELDS, readPrompt } from "./recipes.js";
 import { gestureQuestions, gestureState, upfrontQuestions, upfrontState } from "./state.js";
 
@@ -132,7 +133,27 @@ function placeClass(o, suggested) {
   return suggested.has(o) ? "suggested" : "other named";
 }
 
-/** The page's decision-maker badge, read from the Director itself: a model Director (kind "model") fills the model slot. */
+/**
+ * The page's badge: exactly what decides. tab "gesture": a model decides the recipe and the marks follow the authored
+ * weights; tab "map": a model answers a coarse grid that is interpolated (and maybe blended with the rules).
+ */
+export const MODEL_BADGE = "Decision-maker: Qwen3-0.6B (running in your browser)";
+export const RULES_BADGE = "Decision-maker: Rules (authored tables)";
+export function decisionBadge({ tab = "gesture", director, lookBy = "rules", coarse = 6, blend = false } = {}) {
+  const kind = director?.kind;
+  if (kind === "model") {
+    return { decider: director.badge || MODEL_BADGE, note: tab === "map"
+      ? `Model on a ${coarse}x${coarse} grid, interpolated${blend ? ", blended with rules" : ""}`
+      : "recipe: model, marks: authored weights" };
+  }
+  if (kind === "rules" || !director) {
+    const note = lookBy === "link" ? "opened from a link: drawn with the rules" : lookBy === "you" ? "recipe adjusted by you" : "";
+    return { decider: RULES_BADGE, note };
+  }
+  return { decider: `Decision-maker: ${String(director.name || "unnamed director")}`, note: "" };
+}
+
+/** The badge's two lines from the Director alone (kept for the Director contract tests). */
 export function directorBadge(director) {
   const name = String(director?.name || "unnamed director");
   if (director?.kind !== "model") return { decider: `Decision-maker: ${name}`, model: "Model: none loaded", note: "" };
@@ -278,12 +299,14 @@ export async function chooseLook(director, prompt, budget, { weighted = [], seed
 
 /**
  * Paint one painting mark by mark. Yields after every mark: {step, phase, state, d, painter}.
- * The same look + seed + budget + skin + mode + director answers give the same pixels.
+ * The same look + seed + budget + style + mode + director answers give the same pixels. `skin` is the Gesture style
+ * (brush | sketch | pixel, or paint for old v=1 links). `tick` (the page passes a zero timeout) lets the browser run
+ * between the slices of a large mark; the pixels are the same with or without it.
  */
-export async function* paintSteps({ prompt, look, seed, budget, skin = "paint", director, mode = "weighted", T = T_DEFAULT }) {
+export async function* paintSteps({ prompt, look, seed, budget, skin = "brush", director, mode = "weighted", T = T_DEFAULT, tick = null }) {
   const pid = paintingId(look, seed, budget);
   const palette = enginePalette(look);
-  const painter = new SkinPainter(skin, palette, pid);
+  const painter = new GesturePainter(skin, palette, pid);
   const history = [];
   for (let step = 1; step <= budget; step++) {
     const grid = readback(painter.view(), palette);
@@ -294,7 +317,17 @@ export async function* paintSteps({ prompt, look, seed, budget, skin = "paint", 
     const P = await ask(director, state, qs, `mark ${step}`);
     const d = {};
     for (const q of qs) d[q.id] = selectOption(sharpen(P[q.id], T), optionsOf(q), seedString(pid, step, q.id, mode), mode);
-    painter.mark(step, d, look.composition, look.stroke);
+    if (tick) { // the page: give the browser a turn whenever a mark has run for about 30 ms
+      await tick();
+      const it = painter.markSteps(step, d, look.composition, look.stroke);
+      let t0 = performance.now();
+      for (let r = it.next(); !r.done; r = it.next()) {
+        if (performance.now() - t0 > 30) {
+          await tick();
+          t0 = performance.now();
+        }
+      }
+    } else painter.mark(step, d, look.composition, look.stroke);
     history.push({ step, d });
     yield { step, phase: ph, state, d, P, qs, painter, palette, pid, history };
   }
