@@ -596,7 +596,7 @@ function downloadCanvas(cv, name) {
 }
 
 const shareOf = () => (!app.look ? "" : encodeShare({ look: app.look, seed: app.seed, budget: app.budget, skin: app.skin, mode: app.pick }));
-const fileName = (o) => `menu-painter-${o.look.hue}-${o.look.mood}-seed${o.seed}-${o.budget}marks-${o.skin}.png`;
+const fileName = (o) => `decisive-painter-${o.look.hue}-${o.look.mood}-seed${o.seed}-${o.budget}marks-${o.skin}.png`;
 
 async function copyLink() {
   const url = location.href.split("#")[0] + shareOf();

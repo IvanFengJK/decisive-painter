@@ -108,7 +108,7 @@ if (only === "all" || only === "t1") {
       const p = await open(view, theme);
       const top = await p.eval(`({ h1: document.querySelector('h1').textContent, tag: document.querySelector('.tagline').textContent, title: document.title,
         ex: document.getElementById('explainer').innerText, d: document.getElementById('badge-decider').textContent, m: document.getElementById('badge-model').textContent })`);
-      check(`T1 ${tag}: name, tagline and title`, top.h1 === "Menu Painter" && top.tag === "A painter that only picks from menus." && /^Menu Painter/.test(top.title), top);
+      check(`T1 ${tag}: name, tagline and title`, top.h1 === "Decisive Painter" && top.tag === "Decisions, not diffusion: a painter that picks from menus." && /^Decisive Painter/.test(top.title), top);
       check(`T1 ${tag}: explainer above the canvas`, top.ex.replace(/\s+/g, " ").trim() === "No image is generated. For every mark, the director answers multiple-choice questions with probabilities. Code draws the result.", top.ex);
       check(`T1 ${tag}: badge names the rules and an empty model slot`, top.d === "Decision-maker: Rules (authored tables)" && top.m === "Model: none loaded", top);
       await shot(p, `${tag}-start`, "the empty page before painting: name, tagline, explainer, badge, empty odds panel");
