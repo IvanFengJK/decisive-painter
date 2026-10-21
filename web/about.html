@@ -22,7 +22,7 @@
     colour of the palette, how to fill it, how heavy) by reading a short text description of the painting so far,
     including a 5&times;5 grid of words read back from the real pixels. A seeded renderer then draws the mark. You can
     open "What the director sees" on the main page to read exactly that text and the answers.</p>
-  <p><strong>There is no AI model inside this page.</strong> The live director is a set of rules and hand-written
+  <p><strong>By default there is no AI model inside this page</strong> (Model mode, below, is optional). The default director is a set of rules and hand-written
     recipes: about sixty scene types with their keywords, plus everyday words for colours, weather, time of day,
     seasons, settings, moods and broad subjects. Its per-mark preferences are tables we wrote, combined with average
     choices measured from an open model's recorded paintings (see Licences).</p>
@@ -46,6 +46,19 @@
     be replayed exactly from its choices. That is what share links and Replay do.</p>
   <p><strong>The model slot is empty today: a rules table makes the choices.</strong> The Director interface is where a
     model plugs in, and the badge above the painting names whatever is deciding.</p>
+
+  <h2>Model mode (optional)</h2>
+  <p>Model mode is off until you press <strong>Load model</strong>. That downloads a <strong>general small language
+    model</strong> (Qwen3-0.6B, about 600–650 MB, Apache-2.0) and runs it in this tab, on WebGPU if your browser has it,
+    otherwise on WebAssembly. It answers only the six recipe questions (mood, colour harmony, hue family, value key,
+    saturation and composition) from your words. Every mark is still decided by the rules.</p>
+  <p>It is <strong>not a trained decision model</strong>: it scores the lettered options of each question from its
+    next-word probabilities, asks each question with the options in both orders and averages them, and then applies the
+    page's temperature. A no-collapse guard means <strong>no single option may have more than 85% before the
+    draw</strong>, so it never shows itself as certain. Whether it chooses better recipes than the rules is being
+    measured; it may not.</p>
+  <p>Your words still pass the same guardrails first, and they are never sent anywhere: the downloads are only the
+    model and library files, from huggingface.co (and its file CDN) and cdn.jsdelivr.net.</p>
 
   <h2>What happens to what you type</h2>
   <ul>

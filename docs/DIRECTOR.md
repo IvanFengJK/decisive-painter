@@ -114,6 +114,52 @@ createServer(async (req, res) => {
 Then choose "My own endpoint" and enter `http://localhost:8787/decide`. Keys and Authorization headers belong in the
 adapter, never in the page. Check that server's terms before using its outputs.
 
+## Model mode (`ModelDirector`, `web/model-director.js`, `web/model-loader.js`)
+
+Model mode is off by default. After the visitor presses **Load model**, a **general small language model**
+(Qwen3-0.6B, `onnx-community/Qwen3-0.6B-ONNX` at revision `58ca03a5e7b354b480b1a82b34bde8dc7b854cc0`, Apache-2.0) runs in
+the tab with transformers.js 4.3.1 (vendored in `web/vendor/`). It answers the **six upfront recipe questions** (mood,
+harmony, hue family, value key, saturation, composition). The other three upfront questions (style, stroke, subject) and
+every per-mark question stay with the RuleDirector. It is not a trained decision model: it scores the options of a
+question it was never trained on.
+
+- **One prompt per question and option order.** The prompt has the visitor's words in one field between « » (no
+  delimiters or line breaks inside, at most 80 characters, after guardrails L0–L5), the question, the options lettered
+  A, B, C …, and "Answer with one letter. Answer:". There is no text generation. The scores are the next-token logits
+  of " A", " B", … (one token each), turned into probabilities with a softmax.
+- **Both orders, averaged.** Each question is asked with the options in menu order and reversed, and the two
+  probability vectors are averaged.
+- **Temperature.** The page's T = 0.5 is applied (q ∝ p^(1/T)).
+- **No-collapse guard (disclosed).** After the temperature, **no single option may exceed 0.85**. Any excess is shared
+  among the other options in proportion. This keeps one-option collapse (the failure seen in earlier research on these
+  questions) from fixing the recipe, and it means the page never shows the model as certain.
+- **Seeded draw.** The recipe is drawn from those odds with the painting's seed. The same words and seed give the same
+  recipe, and "Ask it again" draws a new one. In Rules mode the recipe is still a top pick, exactly as before.
+- **Answer format.** Answers use the ordinary Answer format, so the harness validates them like any Director's.
+  Malformed scores (not numbers, wrong length) stop with a readable message.
+- **Backend.** WebGPU when `navigator.gpu` gives an adapter (the q4f16 build, about 600 MB), else WebAssembly (the
+  int8 build, about 650 MB). If WebGPU fails, it tries WebAssembly once.
+- **Download.** It happens only after the click. The model files are kept with the Cache API when storage works, and
+  loading still works without storage. Any failure (no backend, out of memory, network) shows a readable message and
+  leaves Rules on.
+- **Privacy.** The visitor's words go only into the model running in the tab. The requests are for library and model
+  files only, and the browser tests check that no request carries the prompt.
+
+**CSP changes for Model mode (in `index.html`; every other directive is unchanged):**
+
+| directive | added | why |
+|---|---|---|
+| `script-src` | `'wasm-unsafe-eval'` | compiling the onnxruntime WebAssembly module (it does not allow JavaScript `eval`) |
+| `script-src` | `https://cdn.jsdelivr.net` | onnxruntime-web's small JS loader (`ort-wasm-simd-threaded.asyncify.mjs`), pinned to `onnxruntime-web@1.31.0-dev.20260914-8d85527a0` |
+| `connect-src` | `https://cdn.jsdelivr.net` | the onnxruntime WebAssembly binary (same pinned path) |
+| `connect-src` | `https://huggingface.co` | the model and tokenizer files at the pinned revision |
+| `connect-src` | `https://*.hf.co` | Hugging Face's own file CDN, where huggingface.co redirects large files (for example `us.aws.cdn.hf.co`; the host depends on the visitor's region, so the subdomain is not fixed) |
+
+No `worker-src` and no `blob:` scripts are needed, because the runtime's blob-imported wasm cache is turned off
+(`env.useWasmCache = false`). `unsafe-inline` and `unsafe-eval` stay forbidden. The default page makes no request to
+any of these hosts. The library itself is same-origin (`web/vendor/transformers-4.3.1.min.js`, SHA-256
+`8d6716d9086f57c30a4bf367dba61b887593573c770c454465e8019b2703e743`) and is imported only after the click.
+
 ## Guard (guardrail L3)
 
 ```js

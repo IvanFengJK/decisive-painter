@@ -135,8 +135,13 @@ function placeClass(o, suggested) {
 /** The page's decision-maker badge, read from the Director itself: a model Director (kind "model") fills the model slot. */
 export function directorBadge(director) {
   const name = String(director?.name || "unnamed director");
-  return { decider: `Decision-maker: ${name}`, model: director?.kind === "model" ? `Model: ${name}` : "Model: none loaded" };
+  if (director?.kind !== "model") return { decider: `Decision-maker: ${name}`, model: "Model: none loaded", note: "" };
+  const i = director.info;
+  const detail = i ? [i.name, i.dtype, i.mb ? `${i.mb} MB` : "", i.backend,
+    director.msPerQuestion ? `${(director.msPerQuestion / 1000).toFixed(1)} s per question` : ""].filter(Boolean).join(", ") : name;
+  return { decider: `Decision-maker: ${name}`, model: `Model: ${detail}`, note: i ? MODEL_NOTE_TEXT : "" };
 }
+const MODEL_NOTE_TEXT = "General small language model scoring the options (not a trained decision model)";
 
 export class RuleDirector {
   constructor() {
@@ -257,12 +262,18 @@ async function ask(director, state, questions, where) {
   }
 }
 
-/** Ask the director for the look (upfront questions); 'top' picks, so the look is stable for a prompt. */
-export async function chooseLook(director, prompt, budget) {
+/**
+ * Ask the director for the look (upfront questions). By default every answer is a 'top' pick, so the look is stable for a
+ * prompt (the rules). `weighted` names questions drawn instead from the director's odds with the seeded RNG (model mode:
+ * the same prompt and seed give the same look; a new seed can give another).
+ */
+export async function chooseLook(director, prompt, budget, { weighted = [], seed = 0 } = {}) {
   const qs = upfrontQuestions();
   const st = { ...upfrontState(prompt, budget), prompt };
   const P = await ask(director, st, qs, "choosing the look");
-  return Object.fromEntries(qs.map((q) => [q.id, selectOption(P[q.id], optionsOf(q), "", "top")]));
+  return Object.fromEntries(qs.map((q) => [q.id, weighted.includes(q.id)
+    ? selectOption(P[q.id], optionsOf(q), seedString("look", seed, q.id), "weighted")
+    : selectOption(P[q.id], optionsOf(q), "", "top")]));
 }
 
 /**

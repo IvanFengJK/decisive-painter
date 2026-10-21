@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' http://localhost:* http://127.0.0.1:* https://huggingface.co https://*.hf.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Decisive Painter. Decisions, not diffusion: a painter that picks from menus. For every mark, a director answers multiple-choice questions with probabilities and code draws the result. Rules and authored tables, no AI model.">
+<meta name="description" content="Decisive Painter. Decisions, not diffusion: a painter that picks from menus. For every mark, a director answers multiple-choice questions with probabilities and code draws the result. Rules and authored tables by default; an optional small model can choose the recipe once you load it.">
 <title>Decisive Painter: decisions, not diffusion</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
@@ -36,6 +36,7 @@
         <p class="badge slot"><span id="badge-model">Model: none loaded</span>
           <button type="button" class="tip-btn" aria-label="About the model slot" aria-describedby="slot-tip">?</button>
           <span id="slot-tip" class="tip" role="tooltip">Any Director can answer these questions; a model plugs in through the Director interface and is named here.</span></p>
+        <p id="badge-note" class="badge-note" hidden></p>
       </div>
     </div>
     <div class="frame">
@@ -82,7 +83,18 @@
                placeholder="a harbour at dawn" aria-describedby="prompt-help">
         <button type="submit" id="paint" class="primary">Paint</button>
       </form>
-      <p id="prompt-help" class="help">Up to 80 characters. The page paints abstract, scene-like pictures from rules, not an AI model.</p>
+      <p id="prompt-help" class="help">Up to 80 characters. The page paints abstract, scene-like pictures. By default rules decide everything; in Model mode a small model chooses the recipe.</p>
+      <fieldset id="decider" class="decider">
+        <legend>Recipe decided by</legend>
+        <div class="seg">
+          <label><input type="radio" name="decider" value="rules" checked> Rules</label>
+          <label><input type="radio" name="decider" value="model" id="decider-model" disabled> Model</label>
+        </div>
+        <button type="button" id="load-model" aria-describedby="model-help">Load model (about 650 MB)</button>
+        <progress id="model-progress" max="1" value="0" hidden aria-label="Model download"></progress>
+        <p id="model-status" class="help" role="status" aria-live="polite"></p>
+        <p id="model-help" class="help">Model mode lets a small general language model (Qwen3-0.6B) answer the six recipe questions (mood, harmony, hue, key, saturation, composition) from your words, inside this tab. Nothing is downloaded until you press Load model, and your words are never sent anywhere.</p>
+      </fieldset>
       <p id="reading" class="reading" aria-live="polite"></p>
 
       <div id="director-ui" class="director-ui" hidden>
@@ -160,7 +172,7 @@
 </main>
 
 <footer class="foot">
-  <p>Rules and authored recipes, no AI model. Nothing you type leaves this page. <a href="about.html">About</a></p>
+  <p>Rules and authored recipes by default; Model mode is optional and runs a small model in this tab. Nothing you type leaves this page. <a href="about.html">About</a></p>
 </footer>
 </body>
 </html>
