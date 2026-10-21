@@ -1,0 +1,34 @@
+# dependencies and caches
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+.venv/
+
+# test output (screenshots, results JSON)
+out/
+test-results/
+
+# model weights and large binaries
+*.safetensors
+*.onnx
+*.onnx_data
+*.gguf
+*.bin
+*.pt
+*.pth
+
+# secrets and local config
+.env*
+*.key
+*.pem
+.vercel/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# research material never belongs in this repository
+legacy/
+experiments/
