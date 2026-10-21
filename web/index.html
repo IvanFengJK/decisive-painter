@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Type a scene and watch an art-director harness paint it mark by mark. Rules and authored recipes, no AI model.">
+<title>Art Director</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<a class="skip" href="#prompt">Skip to the scene box</a>
+<header class="top">
+  <h1>Art Director</h1>
+  <nav aria-label="Pages"><a href="about.html">About</a></nav>
+</header>
+
+<main class="layout">
+  <section class="stage" aria-labelledby="stage-title">
+    <h2 id="stage-title" class="sr-only">Painting</h2>
+    <div class="frame">
+      <canvas id="canvas" width="600" height="600" role="img" aria-label="Blank paper, waiting for a scene"></canvas>
+    </div>
+    <div class="progress-row">
+      <progress id="progress" max="30" value="0" aria-labelledby="progress-label"></progress>
+      <p id="progress-label" class="progress-label">Ready</p>
+    </div>
+    <div class="transport" role="group" aria-label="Playback">
+      <button type="button" id="pause" disabled>Pause</button>
+      <button type="button" id="step" disabled>Next mark</button>
+      <button type="button" id="replay" disabled>Replay</button>
+      <button type="button" id="download" disabled>Download PNG</button>
+      <button type="button" id="copy-link" disabled>Copy link</button>
+      <button type="button" id="save" disabled>Save</button>
+    </div>
+    <p id="notice" class="notice" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="sheet" aria-label="Controls">
+    <div class="tabs" role="tablist" aria-label="Mode">
+      <button type="button" role="tab" id="tab-paint" aria-selected="true" aria-controls="panel-mode">Watch it paint</button>
+      <button type="button" role="tab" id="tab-director" aria-selected="false" aria-controls="panel-mode" tabindex="-1">Be the art director</button>
+    </div>
+
+    <div id="panel-mode" role="tabpanel" aria-labelledby="tab-paint">
+      <form id="prompt-form" class="prompt-row" novalidate>
+        <label for="prompt" class="sr-only">Scene to paint</label>
+        <input id="prompt" name="prompt" type="text" maxlength="80" autocomplete="off" spellcheck="true"
+               placeholder="a harbour at dawn" aria-describedby="prompt-help">
+        <button type="submit" id="paint" class="primary">Paint</button>
+      </form>
+      <p id="prompt-help" class="help">Up to 80 characters. The page paints abstract, scene-like pictures from rules, not an AI model.</p>
+      <p id="reading" class="reading" aria-live="polite"></p>
+
+      <div id="director-ui" class="director-ui" hidden>
+        <h3>Mark <span id="d-step">1</span> of <span id="d-total">30</span>: <span id="d-phase">backdrop</span></h3>
+        <p class="help">Choose each decision from the same menus the director gets, or press a die to let the director choose.</p>
+        <div id="d-questions" class="d-questions"></div>
+        <div class="d-actions">
+          <button type="button" id="d-dice-all">Let the director choose all</button>
+          <button type="button" id="d-apply" class="primary">Paint this mark</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <fieldset class="skins">
+          <legend>Skin</legend>
+          <label><input type="radio" name="skin" value="paint" checked> Paint</label>
+          <label><input type="radio" name="skin" value="pixel"> Pixel</label>
+          <label><input type="radio" name="skin" value="sketch"> Sketch</label>
+        </fieldset>
+      </div>
+
+      <div class="row budget">
+        <label for="budget">Marks: <output id="budget-out" for="budget">30</output></label>
+        <input id="budget" type="range" min="10" max="50" step="1" value="30" aria-describedby="estimate">
+        <p id="estimate" class="help">About a few seconds on this device.</p>
+      </div>
+
+      <div class="row seed-row">
+        <label for="seed">Seed</label>
+        <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="from the text" aria-describedby="seed-help">
+        <button type="button" id="surprise">Surprise me</button>
+        <p id="seed-help" class="help">Same scene, seed, marks, skin and version give the same painting.</p>
+      </div>
+
+      <details id="look" class="panel">
+        <summary>Adjust the look</summary>
+        <p class="help">The director's reading of your scene. Change any of it and the painting is redrawn.</p>
+        <div id="look-fields" class="look-fields"></div>
+      </details>
+
+      <details id="sees" class="panel sees" open>
+        <summary>What the director sees</summary>
+        <p class="help">The state text it reads before each mark (with the 5&times;5 canvas words) and the answers it gave.</p>
+        <pre id="state-text" class="state-text" tabindex="0" aria-label="State text">No painting yet.</pre>
+        <h3 class="small">Its answers for the last mark</h3>
+        <ul id="answers" class="answers"></ul>
+      </details>
+
+      <details id="advanced" class="panel">
+        <summary>Advanced</summary>
+        <fieldset>
+          <legend>Picking</legend>
+          <label><input type="radio" name="pick" value="weighted" checked> Weighted pick (seeded)</label>
+          <label><input type="radio" name="pick" value="top"> Top pick</label>
+        </fieldset>
+        <fieldset>
+          <legend>Director</legend>
+          <label><input type="radio" name="director" value="rules" checked> Rules and authored recipes (no AI model)</label>
+          <label><input type="radio" name="director" value="endpoint"> My own endpoint</label>
+          <div id="endpoint-box" class="endpoint" hidden>
+            <p class="warning" id="endpoint-warning"><strong>Warning:</strong> with this on, your scene text and every state are sent to the URL you type. Use only a server you trust (for example one on your own computer).</p>
+            <label for="endpoint-url">Endpoint URL</label>
+            <input id="endpoint-url" type="url" placeholder="http://localhost:8787/decide" aria-describedby="endpoint-warning endpoint-help">
+            <p id="endpoint-help" class="help">It receives {state, questions} as JSON and must answer {answers: [{id, probs}]}. This page's security policy only allows servers on localhost.</p>
+          </div>
+        </fieldset>
+      </details>
+
+      <details id="gallery" class="panel">
+        <summary>Saved in this browser</summary>
+        <p class="help">Up to 20 paintings, kept only in this browser. Nothing is uploaded.</p>
+        <ul id="gallery-list" class="gallery-list"></ul>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>Rules and authored recipes, no AI model. Nothing you type leaves this page. <a href="about.html">About</a></p>
+</footer>
+</body>
+</html>

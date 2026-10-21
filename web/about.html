@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<title>About Art Director</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>About Art Director</h1>
+  <nav aria-label="Pages"><a href="index.html">Back to the painter</a></nav>
+</header>
+<main class="prose">
+  <h2>What it is</h2>
+  <p>Art Director is a small painting toy built around an <em>art-director harness</em>. For every mark, a
+    <strong>director</strong> answers a few small typed questions (which mark, where, how big, with what medium, which
+    colour of the palette, how to fill it, how heavy) by reading a short text description of the painting so far,
+    including a 5&times;5 grid of words read back from the real pixels. A seeded renderer then draws the mark. You can
+    open "What the director sees" on the main page to read exactly that text and the answers.</p>
+  <p><strong>There is no AI model inside this page.</strong> The live director is a set of rules and hand-written
+    recipes: about sixty scene types with their keywords, plus everyday words for colours, weather, time of day,
+    seasons, settings, moods and broad subjects. Its per-mark preferences are tables we wrote, combined with average
+    choices measured from an open model's recorded paintings (see Licences).</p>
+  <p>The pictures are <strong>abstract, scene-like paintings</strong>: bands, discs, mounds, washes and lines arranged in
+    a composition and a palette that suit the words. They are not pictures of the thing you typed.</p>
+  <p>The director is a swappable interface. A browser model, or your own server, can answer the same questions
+    without changing the page or the renderer. Under "Advanced" you can point the page at an endpoint you run
+    yourself; that is off by default, and the page warns you that your text would then be sent to it.</p>
+  <p>Same scene, seed, number of marks, skin and version always give the same painting, on any device. Share links
+    carry only the look, the seed, the number of marks and the skin, never your words or an image.</p>
+
+  <h2>What happens to what you type</h2>
+  <ul>
+    <li>It stays in this page. The page makes no network requests while painting: no analytics, no cookies,
+      no fonts or scripts from other sites.</li>
+    <li>Every text first goes through input guardrails:
+      <ul>
+        <li>clean-up: at most 80 characters, invisible and direction-changing characters removed, code and markup refused;</li>
+        <li>a hand-written filter for sexual content, any sexual content involving minors, graphic violence or gore, hate
+          and slurs, self-harm, and targeting a named private person. It sees through letter swaps, spacing tricks,
+          lookalike letters and repeated letters, and it lets ordinary scene words through
+          (a blood orange sunset, a shooting star, a knife and fork on a table);</li>
+        <li>if a text is refused, the page shows one neutral sentence, paints nothing, logs nothing and sends nothing;</li>
+        <li>a slot for an extra guard model, which may only add refusals and is switched off;</li>
+        <li>your words appear in one clearly marked field of the director's text, and every answer must come from fixed
+          lists, so instructions typed into the box are just words.</li>
+      </ul>
+    </li>
+    <li>"Save" keeps up to 20 paintings in this browser only (recipe and a small thumbnail). Nothing is uploaded.</li>
+  </ul>
+
+  <h2>Credit</h2>
+  <p>Inspired by danmana/jev-paints (github.com/danmana/jev-paints); this project does not use its code or lists.</p>
+
+  <h2>Licences</h2>
+  <ul>
+    <li>The page, its renderer, recipes, word lists and guardrail lists are our own work.</li>
+    <li>Some per-mark preference numbers were computed from paintings recorded with the open Kev-4B model, which is
+      released under the Apache License 2.0. No model weights are included or downloaded.</li>
+    <li>The full list is in <a href="LICENSES.md">LICENSES.md</a>.</li>
+  </ul>
+</main>
+<footer class="foot"><p><a href="index.html">Back to the painter</a></p></footer>
+</body>
+</html>
