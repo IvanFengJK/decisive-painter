@@ -375,7 +375,7 @@ function linearStrokes(kind, bx, rng) {
  * All random choices of one gesture -> a plan of raster operations (pure; runs in node). Mirrors Canvas.gesture of
  * the Python renderer line by line. d = {gesture, place, size, medium, fill, weight}.
  */
-export function planGesture(paintingId, step, d, composition, strokeChar, n = W) {
+export function planGesture(paintingId, step, d, composition, strokeChar, n = W, media = MEDIUM) {
   const k = n / W;
   const rng = new Rng(seedString(paintingId, step));
   const box = placeBox(composition, d.place);
@@ -386,7 +386,7 @@ export function planGesture(paintingId, step, d, composition, strokeChar, n = W)
   const cx = x1 - x0 > w ? rng.uniform(x0 + w / 2, x1 - w / 2) : (x0 + x1) / 2;
   const cy = y1 - y0 > h ? rng.uniform(y0 + h / 2, y1 - h / 2) : (y0 + y1) / 2;
   const bx = [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
-  const [baseW, alpha, grainP, blur, blend] = MEDIUM[d.medium];
+  const [baseW, alpha, grainP, blur, blend, sp = 1] = media[d.medium]; // sp: fill-line spacing (Gesture skin only)
   const [aMult, wMult] = WEIGHT[d.weight];
   const [amp0, sblur, broken, over] = STROKE[strokeChar];
   const amp = amp0 * k;
@@ -422,11 +422,11 @@ export function planGesture(paintingId, step, d, composition, strokeChar, n = W)
     } else {
       if (fill === "thin wash") {
         ops.push({ op: "wash", sigma: Math.max(2.0 * k, 0.03 * Math.max(w, h)) });
-        drawLines(ops, fillStrokes(g, bxs, rng, width * 2.5, 1.6, k), rng, width * 2.5, amp, broken, k, 170);
+        drawLines(ops, fillStrokes(g, bxs, rng, width * 2.5, 1.6 * sp, k), rng, width * 2.5, amp, broken, k, 170);
       } else if (fill === "hatched fill") {
-        drawLines(ops, fillStrokes(g, bxs, rng, width, 3.2, k, 45.0), rng, width, amp, broken, k);
+        drawLines(ops, fillStrokes(g, bxs, rng, width, 3.2 * sp, k, 45.0), rng, width, amp, broken, k);
       } else {
-        drawLines(ops, fillStrokes(g, bxs, rng, width, 0.55, k), rng, width * 1.15, amp, broken, k);
+        drawLines(ops, fillStrokes(g, bxs, rng, width, 0.55 * sp, k), rng, width * 1.15, amp, broken, k);
       }
       ops.push({ op: "clip", sigma: 1.0 * k });
     }
@@ -435,7 +435,7 @@ export function planGesture(paintingId, step, d, composition, strokeChar, n = W)
 }
 
 // ------------------------------------------------------------------------------------------------ software rasteriser
-function fillPolygon(mask, n, pts, value) {
+export function fillPolygon(mask, n, pts, value) {
   let ymin = Infinity, ymax = -Infinity;
   for (const p of pts) {
     if (p[1] < ymin) ymin = p[1];
@@ -461,7 +461,7 @@ function fillPolygon(mask, n, pts, value) {
   }
 }
 
-function fillDisc(mask, n, cx, cy, rx, ry, value) {
+export function fillDisc(mask, n, cx, cy, rx, ry, value) {
   if (rx <= 0 || ry <= 0) return;
   const ya = Math.max(0, Math.ceil(cy - ry));
   const yb = Math.min(n - 1, Math.floor(cy + ry));
@@ -558,7 +558,7 @@ export function gaussianBlur(src, n, sigma, bbox = null) {
   return out;
 }
 
-function bboxOf(mask, n) {
+export function bboxOf(mask, n) {
   let xa = n, ya = n, xb = -1, yb = -1;
   for (let y = 0; y < n; y++) {
     const row = y * n;
@@ -621,7 +621,7 @@ export class PaintCanvas {
     const low0 = new Float32Array(m * m);
     for (let i = 0; i < m * m; i++) low0[i] = Math.trunc(rng.random() * 255);
     const lowH = resampleAxis(low0, m, n, m, true); // m rows x n cols
-    const low = resampleAxis(lowH, m, n, n, false); // n rows x n cols
+    const low = (this.low = resampleAxis(lowH, m, n, n, false)); // n rows x n cols (kept for the Gesture wash)
     const g0 = new Float32Array(n * n);
     for (let i = 0; i < n * n; i++) g0[i] = Math.trunc(rng.random() * 255);
     const gb = gaussianBlur(g0, n, 0.8);
@@ -641,9 +641,9 @@ export class PaintCanvas {
   }
 
   /** Plan + rasterise + composite one gesture; returns the plan (for traces and tests). */
-  gesture(step, d, composition, colourHex, strokeChar) {
+  gesture(step, d, composition, colourHex, strokeChar, media = MEDIUM) {
     const n = this.n;
-    const plan = planGesture(this.paintingId, step, d, composition, strokeChar, n);
+    const plan = planGesture(this.paintingId, step, d, composition, strokeChar, n, media);
     let mask = new Float32Array(n * n);
     let shape = null;
     for (const op of plan.ops) {
@@ -850,9 +850,14 @@ export function readback(canvas, palette) {
   const ns = Math.ceil(n0 / step);
   const idx = new Uint8Array(ns * ns);
   const px = canvas.px;
+  let pr = NaN, pg = NaN, pb = NaN, prev = 0; // flat paint repeats: the same colour gives the same nearest reference
   for (let y = 0; y < ns; y++) {
     for (let x = 0; x < ns; x++) {
       const i = (y * step * n0 + x * step) * 3;
+      if (px[i] === pr && px[i + 1] === pg && px[i + 2] === pb) {
+        idx[y * ns + x] = prev;
+        continue;
+      }
       const L = lab(px[i], px[i + 1], px[i + 2]);
       let best = 0, bd = Infinity;
       for (let q = 0; q < ref.length; q++) {
@@ -860,6 +865,7 @@ export function readback(canvas, palette) {
         if (d < bd) { bd = d; best = q; }
       }
       idx[y * ns + x] = best;
+      pr = px[i]; pg = px[i + 1]; pb = px[i + 2]; prev = best;
     }
   }
   const out = {};
