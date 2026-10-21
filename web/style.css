@@ -81,6 +81,14 @@ a { color: var(--fg); text-underline-offset: 3px; }
 .explainer { font-size: 0.9rem; line-height: 1.35; }
 .explainer p { margin: 0; }
 .explainer p:first-child { font-weight: 650; }
+.who { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge { position: relative; margin: 0; padding: 3px 10px; border: 1px solid var(--line-strong); border-radius: 999px;
+  background: var(--surface); font-size: 0.8125rem; line-height: 1.5; }
+.slot { border-style: dashed; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.tip-btn { min-height: 0; width: 24px; height: 24px; padding: 0; border-radius: 50%; font-size: 0.75rem; line-height: 1; }
+.tip { display: none; position: absolute; z-index: 5; right: 0; top: calc(100% + 6px); width: min(260px, 80vw); padding: 8px 10px;
+  background: var(--fg); color: var(--bg); border-radius: 8px; font-size: 0.8125rem; line-height: 1.4; }
+.tip-btn:hover + .tip, .tip-btn:focus + .tip { display: block; }
 .frame {
   width: 100%;
   aspect-ratio: 1 / 1;

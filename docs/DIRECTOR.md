@@ -10,6 +10,7 @@ the decisions, never the page or the renderer.
 ```js
 interface Director {
   name: string;                                         // shown in the UI
+  kind?: "rules" | "model" | "endpoint" | "human";       // "model" fills the page's model slot
   init(): Promise<void>;                                // load anything heavy here
   decide(state, questions: Question[]): Promise<Answer[]>;
 }
@@ -55,7 +56,11 @@ Last marks: 21. block at left wing, secondary; 22. ...
 
 ### Implementations in this site
 
-- `RuleDirector` (default): authored recipes + generic words for the look; per mark, phase weights computed from Kev-4B
+The page's badge is read from the Director in use: "Decision-maker: <name>", and "Model: <name>" when its `kind` is
+`"model"` (otherwise "Model: none loaded"). Swapping in a model Director changes the badge with no page edits
+(`directorBadge` in `director.js`; tested in `tests/badge.test.mjs` with a mock named "Mock model (test)").
+
+- `RuleDirector` (default, name "Rules (authored tables)", kind `"rules"`): authored recipes + generic words for the look; per mark, phase weights computed from Kev-4B
   traces with authored subject and style multipliers (`director.js`). No AI model.
 - `EndpointDirector` (Advanced, off by default): `POST <url>` with JSON `{ "state": "<state.text>", "questions": [...] }`,
   expects `{ "answers": [{ "id": "...", "probs": {...} }] }`. 20 s timeout, no credentials, no referrer. The page's
@@ -69,6 +74,7 @@ Last marks: 21. block at left wing, secondary; 22. ...
 // director-webgpu.js (sketch; see the stub there)
 export class WebGpuDirector {
   name = "Small model on this device (WebGPU)";
+  kind = "model";
   async init() {
     if (!navigator.gpu) throw new DirectorError("this browser has no WebGPU");
     this.session = await loadModelFromSameOrigin("./model/"); // vendored runtime + weights, same origin

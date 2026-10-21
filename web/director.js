@@ -1,6 +1,7 @@
 // The Director interface, its two live implementations and the harness loop that asks it (contract: DIRECTOR.md).
 //
-//   interface Director { name: string; init(): Promise<void>; decide(state, questions): Promise<Answer[]> }
+//   interface Director { name: string; kind?: 'rules' | 'model' | 'endpoint' | 'human'; init(): Promise<void>;
+//                        decide(state, questions): Promise<Answer[]> }
 //   Question = { id, type: 'choice' | 'yesno' | 'score', text, options?: string[], levels?: string[], about? }
 //   Answer   = { id, probs }   probs: {option: p} or [p] in option order; non-negative, any positive sum
 //
@@ -131,9 +132,16 @@ function placeClass(o, suggested) {
   return suggested.has(o) ? "suggested" : "other named";
 }
 
+/** The page's decision-maker badge, read from the Director itself: a model Director (kind "model") fills the model slot. */
+export function directorBadge(director) {
+  const name = String(director?.name || "unnamed director");
+  return { decider: `Decision-maker: ${name}`, model: director?.kind === "model" ? `Model: ${name}` : "Model: none loaded" };
+}
+
 export class RuleDirector {
   constructor() {
-    this.name = "Rules and authored recipes (no AI model)";
+    this.name = "Rules (authored tables)";
+    this.kind = "rules";
   }
 
   async init() {}
@@ -201,6 +209,7 @@ export class EndpointDirector {
     this.url = u.href;
     this.timeoutMs = timeoutMs;
     this.name = `Your endpoint (${u.host})`;
+    this.kind = "endpoint";
   }
 
   async init() {}

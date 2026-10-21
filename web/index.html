@@ -31,6 +31,12 @@
         <p>For every mark, the director answers multiple-choice questions with probabilities.</p>
         <p>Code draws the result.</p>
       </div>
+      <div class="who" role="group" aria-label="Who decides">
+        <p id="badge-decider" class="badge">Decision-maker: Rules (authored tables)</p>
+        <p class="badge slot"><span id="badge-model">Model: none loaded</span>
+          <button type="button" class="tip-btn" aria-label="About the model slot" aria-describedby="slot-tip">?</button>
+          <span id="slot-tip" class="tip" role="tooltip">Any Director can answer these questions; a model plugs in through the Director interface and is named here.</span></p>
+      </div>
     </div>
     <div class="frame">
       <canvas id="canvas" width="600" height="600" role="img" aria-label="Blank paper, waiting for a scene"></canvas>
@@ -121,7 +127,7 @@
         </fieldset>
         <fieldset>
           <legend>Director</legend>
-          <label><input type="radio" name="director" value="rules" checked> Rules and authored recipes (no AI model)</label>
+          <label><input type="radio" name="director" value="rules" checked> Rules (authored tables, no AI model)</label>
           <label><input type="radio" name="director" value="endpoint"> My own endpoint</label>
           <div id="endpoint-box" class="endpoint" hidden>
             <p class="warning" id="endpoint-warning"><strong>Warning:</strong> with this on, your scene text and every state are sent to the URL you type. Use only a server you trust (for example one on your own computer).</p>

@@ -1,7 +1,7 @@
 // The page: prompt -> guardrails -> look -> the harness paints mark by mark with the chosen Director and skin.
 // Visitor text is only ever written with textContent; the page makes no network request unless the visitor turns on
 // their own endpoint under Advanced.
-import { DirectorError, EndpointDirector, RuleDirector, chooseLook, optionsOf, paintSteps, sharpen } from "./director.js";
+import { DirectorError, EndpointDirector, RuleDirector, chooseLook, directorBadge, optionsOf, paintSteps, sharpen } from "./director.js";
 import { DisabledGuard, runGuard } from "./guard.js";
 import { BLOCK_MESSAGE, check } from "./policy.js";
 import { LOOK_FIELDS, readPrompt } from "./recipes.js";
@@ -201,6 +201,7 @@ const ABOUT = { gesture: GESTURES, medium: MEDIA, fill: FILLS, size: SIZES, weig
 
 class HumanDirector {
   name = "You";
+  kind = "human";
   async init() {}
   decide(state, questions) {
     return new Promise((resolve, reject) => {
@@ -306,6 +307,21 @@ function currentDirector() {
   return rules;
 }
 
+/** The badge always names the Director that answers: the rules, an endpoint, the visitor, or a model. */
+function showBadge(director) {
+  const b = directorBadge(director);
+  $("badge-decider").textContent = b.decider;
+  $("badge-model").textContent = b.model;
+}
+
+function badgeForChoice() {
+  try {
+    showBadge(currentDirector());
+  } catch {
+    showBadge({ name: "Your endpoint (no valid URL yet)", kind: "endpoint" });
+  }
+}
+
 function setRunning(running) {
   const dirMode = app.mode === "director";
   $("pause").disabled = !running || dirMode;
@@ -334,6 +350,7 @@ async function startPainting() {
   }
   const opts = { prompt: app.prompt || "(a shared painting; no words)", look: app.look, seed: app.seed, budget: app.budget,
     skin: app.skin, director, mode: app.pick };
+  showBadge(director);
   setRunning(true);
   setProgress(0);
   $("director-ui").hidden = app.mode !== "director";
@@ -619,6 +636,7 @@ function setMode(mode) {
   $("director-ui").hidden = true;
   setRunning(false);
   updateEstimate();
+  badgeForChoice();
   notice(dir ? "Type a scene and press Start; then choose each mark yourself." : "");
 }
 
@@ -684,8 +702,12 @@ function wire() {
     });
   }
   for (const el of document.querySelectorAll('input[name="director"]')) {
-    el.addEventListener("change", () => { $("endpoint-box").hidden = radioValue("director") !== "endpoint"; });
+    el.addEventListener("change", () => {
+      $("endpoint-box").hidden = radioValue("director") !== "endpoint";
+      badgeForChoice();
+    });
   }
+  $("endpoint-url").addEventListener("change", badgeForChoice);
   $("gallery").addEventListener("toggle", () => { if ($("gallery").open) renderGallery(); });
   window.addEventListener("hashchange", () => {
     if (location.hash && location.hash !== shareOf()) openFromHash();
@@ -711,6 +733,7 @@ async function benchmark() {
 blankCanvas();
 buildLookFields();
 wire();
+showBadge(rules);
 updateEstimate();
 openFromHash();
 setTimeout(benchmark, 300);
