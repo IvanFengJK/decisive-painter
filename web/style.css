@@ -77,6 +77,10 @@ a { color: var(--fg); text-underline-offset: 3px; }
 .layout { padding: 0 16px; }
 
 /* ---------------------------------------------------------------------------------------- the stage */
+.intro { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 16px; margin: 4px 0 10px; }
+.explainer { font-size: 0.9rem; line-height: 1.35; }
+.explainer p { margin: 0; }
+.explainer p:first-child { font-weight: 650; }
 .frame {
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -255,8 +259,8 @@ h3.small { font-size: 0.9rem; margin: 12px 0 4px; }
     align-items: start;
   }
   .stage { position: sticky; top: 12px; }
-  .frame { width: min(100%, calc(100vh - 190px)); margin: 0 auto; }
-  .progress-row, .transport, .notice { width: min(100%, calc(100vh - 190px)); margin-left: auto; margin-right: auto; }
+  .frame { width: min(100%, calc(100vh - 270px)); margin: 0 auto; }
+  .intro, .progress-row, .transport, .notice, .again-help { width: min(100%, calc(100vh - 270px)); margin-left: auto; margin-right: auto; }
   .sheet {
     margin: 0;
     border-radius: 14px;
