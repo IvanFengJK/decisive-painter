@@ -1,0 +1,23 @@
+{
+ "painting_id": "example-lighthouse",
+ "about": "Hand-written example decisions (not model output) for render_decisions.py.",
+ "look": {"composition": "tall centre", "stroke": "energetic and loose"},
+ "palette": {
+  "paper": "#f7f3eb",
+  "roles": {"dominant": "#3d5a73", "secondary": "#6b7f8f", "accent": "#e0a24a", "neutral": "#b9bcc0", "shadow": "#1f2a36", "highlight": "#f2e6c9"}
+ },
+ "steps": [
+  {"step": 1, "gesture": "broad wash", "place": "upper air", "size": "large", "medium": "watercolour", "colour": "secondary", "fill": "thin wash", "weight": "light"},
+  {"step": 2, "gesture": "slanted strokes", "place": "whole frame", "size": "large", "medium": "watercolour", "colour": "dominant", "fill": "solid fill", "weight": "light"},
+  {"step": 3, "gesture": "stacked arcs", "place": "upper air", "size": "large", "medium": "charcoal", "colour": "shadow", "fill": "solid fill", "weight": "medium"},
+  {"step": 9, "gesture": "low mound", "place": "low ground", "size": "large", "medium": "oil pastel", "colour": "shadow", "fill": "solid fill", "weight": "medium"},
+  {"step": 10, "gesture": "horizontal dashes", "place": "low ground", "size": "large", "medium": "oil pastel", "colour": "neutral", "fill": "solid fill", "weight": "medium"},
+  {"step": 17, "gesture": "pointed triangle", "place": "left wing", "size": "medium", "medium": "oil pastel", "colour": "dominant", "fill": "solid fill", "weight": "medium"},
+  {"step": 25, "gesture": "upright column", "place": "centre stage", "size": "medium", "medium": "oil pastel", "colour": "neutral", "fill": "solid fill", "weight": "heavy"},
+  {"step": 26, "gesture": "block", "place": "B3", "size": "medium", "medium": "oil pastel", "colour": "highlight", "fill": "solid fill", "weight": "heavy"},
+  {"step": 27, "gesture": "outline loop", "place": "centre stage", "size": "medium", "medium": "ink pen", "colour": "shadow", "fill": "outline only", "weight": "heavy"},
+  {"step": 41, "gesture": "round disc", "place": "B3", "size": "small", "medium": "oil pastel", "colour": "accent", "fill": "solid fill", "weight": "heavy"},
+  {"step": 42, "gesture": "slanted strokes", "place": "right wing", "size": "small", "medium": "ink pen", "colour": "highlight", "fill": "solid fill", "weight": "heavy"},
+  {"step": 43, "gesture": "dotted speckle", "place": "upper air", "size": "small", "medium": "oil pastel", "colour": "highlight", "fill": "solid fill", "weight": "medium"}
+ ]
+}
