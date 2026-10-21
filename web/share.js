@@ -58,7 +58,7 @@ export function encodeShare(r) {
 export function decodeShare(hash) {
   const h = String(hash || "").replace(/^#/, "");
   if (!h) return null;
-  if (h.length > 400) throw new ShareError("This link is too long to be a painting link.");
+  if (h.length > 300) throw new ShareError("This link is too long to be a painting link.");
   const q = new URLSearchParams(h);
   const v = q.get("v");
   if (v === null) throw new ShareError("This link has no version, so it is not a painting link.");
@@ -66,10 +66,10 @@ export function decodeShare(hash) {
   const look = {};
   for (const [f, k] of Object.entries(KEYS)) {
     const raw = q.get(k);
-    const opts = LOOK_FIELDS[f];
-    const i = clampInt(raw, 0, opts.length - 1, -1);
-    if (i < 0) throw new ShareError("This painting link is missing part of the look, so it cannot be redrawn.");
-    look[f] = opts[i];
+    if (raw === null || !/^\d{1,2}$/.test(raw)) throw new ShareError("This painting link is incomplete or damaged.");
+    const i = Number(raw);
+    if (i >= LOOK_FIELDS[f].length) throw new ShareError("This painting link is incomplete or damaged.");
+    look[f] = LOOK_FIELDS[f][i];
   }
   const out = {
     look,

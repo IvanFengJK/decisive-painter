@@ -247,6 +247,7 @@ export function coarseFromAnswers(P, gc) {
   for (let y = 0; y < gc; y++) {
     for (let x = 0; x < gc; x++) {
       const a = P[`cell:${x},${y}`];
+      if (!a || a.length !== R || a.some((v) => !Number.isFinite(v) || v < 0)) throw new DirectorError(`the map's cell ${x},${y} is not a set of six probabilities`);
       const o = (y * gc + x) * R;
       for (let r = 0; r < R; r++) p[o + r] = a[r];
       normaliseCell(p, o);

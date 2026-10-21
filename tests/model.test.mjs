@@ -121,7 +121,7 @@ test("toggle: Rules by default, Model only after loading, Rules again after a fa
 test("badge: model name, size, backend and latency, and the honest note", async () => {
   const { d } = mock(0);
   let b = directorBadge(d);
-  assert.equal(b.decider, "Decision-maker: Qwen3-0.6B (recipe) + Rules (marks)");
+  assert.equal(b.decider, "Decision-maker: Qwen3-0.6B (running in your browser)");
   assert.equal(b.model, "Model: Qwen3-0.6B, int8, 654 MB, WASM");
   assert.equal(b.note, MODEL_NOTE);
   assert.equal(MODEL_NOTE, "General small language model scoring the options (not a trained decision model)");
