@@ -651,11 +651,14 @@ function showCell(c) {
   pop.replaceChildren(h, ol);
   pop.dataset.x = String(c.x);
   pop.dataset.y = String(c.y);
-  pop.style.left = c.x < g / 2 ? `${((c.x + 1) / g) * 100}%` : "";
-  pop.style.right = c.x < g / 2 ? "" : `${(1 - c.x / g) * 100}%`;
-  pop.style.top = c.y < g / 2 ? `${((c.y + 1) / g) * 100}%` : "";
-  pop.style.bottom = c.y < g / 2 ? "" : `${(1 - c.y / g) * 100}%`;
+  // beside the cell, on the side with more room, and always inside the painting's frame
   pop.hidden = false;
+  const fw = $("frame").clientWidth, fh = $("frame").clientHeight;
+  const cw = fw / g, ch = fh / g;
+  const left = c.x < g / 2 ? (c.x + 1) * cw + 4 : c.x * cw - pop.offsetWidth - 4;
+  const top = c.y < g / 2 ? (c.y + 1) * ch + 4 : c.y * ch - pop.offsetHeight - 4;
+  pop.style.left = `${Math.max(2, Math.min(fw - pop.offsetWidth - 2, left))}px`;
+  pop.style.top = `${Math.max(2, Math.min(fh - pop.offsetHeight - 2, top))}px`;
   showMapState();
 }
 
