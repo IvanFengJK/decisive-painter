@@ -101,11 +101,11 @@ function updateEstimate() {
   const per = app.msPerMark[gestureStyle()] + (reduceMotion.matches ? 0 : PACE_MS);
   const s = Math.max(1, Math.round((app.budget * per) / 1000));
   $("estimate").textContent = slot.mode === "model" && !useEndpoint()
-    ? `The model reads your words first (six questions, about ${fmtMin(6 * (slot.director?.msPerQuestion || 6500))}); then about ${s} second${s === 1 ? "" : "s"} for the marks.`
+    ? `The model reads your words first (six questions, about ${fmtMin(6 * (slot.director?.msPerQuestion || 10000))}); then about ${s} second${s === 1 ? "" : "s"} for the marks.`
     : `About ${s} second${s === 1 ? "" : "s"} on this device (measured here).`;
   const n = app.coarse * app.coarse;
   $("map-estimate").textContent = slot.mode === "model"
-    ? `Model mode: ${n} questions on a ${app.coarse}x${app.coarse} grid, about ${fmtMin(n * (slot.director?.msPerQuestion || 6500))} on this device.`
+    ? `Model mode: ${n} questions on a ${app.coarse}x${app.coarse} grid, about ${fmtMin(n * (slot.director?.msPerQuestion || 10000))} on this device.`
     : `The rules fill every cell at once (about ${Math.max(1, Math.round(app.mapMs[app.style.map] / 1000))} s with this style).`;
 }
 
@@ -455,6 +455,12 @@ async function startGesture() {
     endRun(token);
     return;
   }
+  // In Model mode the model only chooses the recipe. A recipe it did not choose (the rules', a link's, or one adjusted
+  // by hand) is painted by the rules alone, and the badge says so.
+  if (director.kind === "model" && app.lookBy !== "model") {
+    director = rules;
+    notice("This recipe was not chosen by the model, so the rules paint it. Press Paint to let the model choose the recipe.");
+  }
   const opts = { prompt: app.prompt || "(a shared painting; no words)", look: app.look, seed: app.seed, budget: app.budget,
     skin: gestureStyle(), director, mode: app.pick, tick: () => sleep(0) };
   app.painted = { tab: "gesture", director };
@@ -509,7 +515,7 @@ async function mapField(token, ask) {
     return { field: fieldFromCoarse(app.modelCells.coarse, { look, seed, grid, blend: app.blend }), source: "model" };
   }
   if (!ask) {
-    notice(`Showing the rules' map. Press Paint to let the model answer ${app.coarse * app.coarse} cell questions (about ${fmtMin(app.coarse * app.coarse * (slot.director.msPerQuestion || 6500))}).`);
+    notice(`Showing the rules' map. Press Paint to let the model answer ${app.coarse * app.coarse} cell questions (about ${fmtMin(app.coarse * app.coarse * (slot.director.msPerQuestion || 10000))}).`);
     return { field: rulesField(look, seed, grid), source: "rules" };
   }
   const director = slot.director;
@@ -950,7 +956,7 @@ function afterDeciderChange() {
   }
   if (app.tab === "gesture") onPaint();
   else if (slot.mode === "model") {
-    notice(`Model mode is on. Press Paint to let the model answer ${app.coarse * app.coarse} cell questions (about ${fmtMin(app.coarse * app.coarse * (slot.director.msPerQuestion || 6500))}); the map on screen is still the rules'.`);
+    notice(`Model mode is on. Press Paint to let the model answer ${app.coarse * app.coarse} cell questions (about ${fmtMin(app.coarse * app.coarse * (slot.director.msPerQuestion || 10000))}); the map on screen is still the rules'.`);
   } else repaint();
 }
 

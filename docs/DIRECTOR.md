@@ -137,8 +137,11 @@ question it was never trained on.
   recipe, and "Ask it again" draws a new one. In Rules mode the recipe is still a top pick, exactly as before.
 - **Answer format.** Answers use the ordinary Answer format, so the harness validates them like any Director's.
   Malformed scores (not numbers, wrong length) stop with a readable message.
-- **Backend.** WebGPU when `navigator.gpu` gives an adapter (the q4f16 build, about 600 MB), else WebAssembly (the
-  int8 build, about 650 MB). If WebGPU fails, it tries WebAssembly once.
+- **Backend.** WebAssembly with the int8 build (about 650 MB), always, in a module **Worker** (`web/model-worker.js`)
+  so the page's main thread stays free while the model reads. The WebGPU q4f16 build of earlier rounds is no longer
+  used: 4-bit quantisation changed the top picks too often in our tests, and int8 did not.
+- **Cancel.** Loading can be cancelled (the worker is terminated); a long batch of questions stops between questions
+  when the page sets `shouldStop`.
 - **Download.** It happens only after the click. The model files are kept with the Cache API when storage works, and
   loading still works without storage. Any failure (no backend, out of memory, network) shows a readable message and
   leaves Rules on.
@@ -155,10 +158,42 @@ question it was never trained on.
 | `connect-src` | `https://huggingface.co` | the model and tokenizer files at the pinned revision |
 | `connect-src` | `https://*.hf.co` | Hugging Face's own file CDN, where huggingface.co redirects large files (for example `us.aws.cdn.hf.co`; the host depends on the visitor's region, so the subdomain is not fixed) |
 
-No `worker-src` and no `blob:` scripts are needed, because the runtime's blob-imported wasm cache is turned off
+| `worker-src` | `'self'` | the model's Worker, a same-origin module script (v2) |
+
+No `blob:` scripts are needed, because the runtime's blob-imported wasm cache is turned off
 (`env.useWasmCache = false`). `unsafe-inline` and `unsafe-eval` stay forbidden. The default page makes no request to
 any of these hosts. The library itself is same-origin (`web/vendor/transformers-4.3.1.min.js`, SHA-256
 `8d6716d9086f57c30a4bf367dba61b887593573c770c454465e8019b2703e743`) and is imported only after the click.
+
+## Cell questions (the Probability map tab, `web/field.js`)
+
+The map asks one typed question per cell. The contract is the ordinary Director contract with a batched `decide()`:
+
+```js
+Question = { id: "cell:x,y", type: "choice", options: ["dominant", "secondary", "accent", "neutral", "shadow", "highlight"],
+             about: { role: colour words }, text, where: { x, y, nx, ny, words } }
+Answer   = { id, probs }                      // over the six roles, validated like every answer
+state    = { kind: "cells", prompt, look, grid, text }
+decide(state, questions)                      // every cell of the grid in one call (an array in, an array out)
+```
+
+- **State text per question** = `state.text` + the question's text (`cellText(state, q)`): the request in its one
+  delimited field, the recipe in words (mood, harmony, hue family, key, saturation, style), the palette in colour words,
+  the composition, the grid size, and the cell's position in words ("upper left of centre") and normalised coordinates
+  (cell centre, 0 to 1 from the top left). The rules' region label for a cell (for example "upper air") is deliberately
+  **not** in the state.
+- **Rules** (`rulesField`) do not use the questions: they compute every cell directly from authored region tables on the
+  composition's named places, soft edges, a vertical light gradient, seeded value noise and a subject blob. Every cell
+  sums to 1 (within 1e-9), and the same recipe, seed and grid give the same field.
+- **Model** (`directorField` with `ModelDirector.decideCells`): the model answers the cells of a coarse grid (4x4, 6x6 or
+  8x8). It reads a shorter prompt than the full state text (prompt length is what costs time on WebAssembly): the
+  delimited words, the layout, the mood and key, the grid size, the cell's position, and the options with their colour
+  words. Both option orders are averaged, no sharpening, and no role may exceed 0.85. The answers are validated, the
+  coarse odds are interpolated bilinearly between cell centres in probability space, renormalised, optionally mixed half
+  and half with the rules field, and checked again (`checkField`). Progress comes through `onQuestion(k, n)`.
+- **Any Director** can answer the same questions (`MockDirector` in `field.js` answers uniform odds for the tests). A
+  malformed answer (a missing cell, the wrong number of probabilities, an option not on the menu, a negative or NaN, all
+  zeros) stops with a readable `DirectorError`, never a crash and never an invalid map.
 
 ## Guard (guardrail L3)
 

@@ -8,8 +8,18 @@ earlier rounds: the Round 12 renderer and lists (`harness/render.py`, `harness/l
 code rules, and the Round 15 palette engine. Licence: MIT (see `LICENSE`).
 
 One third-party file is included: `web/vendor/transformers-4.3.1.min.js` (transformers.js 4.3.1, Apache License 2.0;
-licence in `web/vendor/LICENSE-transformers.txt`), loaded only after the visitor presses Load model. Model mode then
-fetches onnxruntime-web (MIT) and Qwen3-0.6B (Apache-2.0) at run time; neither is included. No fonts or images from
+licence in `web/vendor/LICENSE-transformers.txt`), loaded only after the visitor presses Load model, inside the model's
+Worker. Model mode then fetches at run time, and nothing of it is included:
+
+- **onnxruntime-web** `1.31.0-dev.20260914-8d85527a0` (MIT License) from cdn.jsdelivr.net: the WebAssembly runtime.
+- **Qwen3-0.6B**, ONNX build `onnx-community/Qwen3-0.6B-ONNX` at revision `58ca03a5e7b354b480b1a82b34bde8dc7b854cc0`,
+  file `onnx/model_int8.onnx` (about 618 MB) plus its tokenizer and config, from huggingface.co. Licence checked on
+  2026-10-22: the base model `Qwen/Qwen3-0.6B` is released under the **Apache License 2.0** (its model card says
+  `license: apache-2.0` and links the full Apache 2.0 text in its repository); the ONNX build's card names
+  `Qwen/Qwen3-0.6B` as its base model and states no other licence, so the Apache 2.0 terms of the base model apply.
+  Apache 2.0 allows use, modification and redistribution, including commercial use, with the licence and notices kept;
+  it gives no trademark rights and no warranty. This site does not redistribute the weights: the visitor's browser
+  fetches them from Hugging Face. No fonts or images from
 others are included. The site needs no packages; the tests use
 only node's standard library and an already-installed Chromium; the Python harness needs numpy and Pillow
 (`harness/requirements.txt`), which are installed separately and not included.
@@ -25,5 +35,9 @@ only node's standard library and an already-installed Chromium; the Python harne
 
 ## Credit
 
-The idea's credit is in `README.md` and on the site's About page (`web/about.html`). No code or lists from that project
-are used.
+- danmana/jev-paints (github.com/danmana/jev-paints): the idea of gesture-level decisions (the Gesture tab).
+- achimala/jev-paint (github.com/achimala/jev-paint): the idea of per-cell colour probabilities and the impasto look (the
+  Probability map tab).
+
+Both are credited in `README.md` and on the About page (`web/about.html`). No code, lists or wording from either project
+are used; their source was not read.
