@@ -11,9 +11,9 @@ paintings are abstract and scene-like, not pictures of the thing. The Director i
 renderer. The page is plain HTML, CSS and ES modules, about 160 KB, with no build step, no third-party scripts, no
 analytics and no cookies.
 
-![The Paint skin in the light theme: "a lighthouse in a storm" in 30 marks](docs/img/paint-desktop-light.png)
+![The Paint skin in the light theme: "a lighthouse in a storm" in 30 marks, with the explainer, the decision-maker badge and the odds for the last mark](docs/img/paint-desktop-light.png)
 
-![The Pixel skin in the dark theme: the same scene, snapped to a 64x64 palette grid](docs/img/pixel-desktop-dark.png)
+![The Pixel skin in the dark theme: the same scene, snapped to a 64x64 palette grid, with the same odds panel](docs/img/pixel-desktop-dark.png)
 
 ## Run it locally
 
