@@ -813,7 +813,7 @@ if (run("model")) {
 results.finished = new Date().toISOString();
 results.failed = failed;
 writeFileSync(`${ROOT}out/browser-results${only === "all" ? "" : `-${only}`}.json`, JSON.stringify(results, null, 1));
-await browser.close();
+await Promise.race([browser.close(), sleep(5000)]); // a browser that already exited never answers Browser.close
 server.close();
 if (results.retried.length) console.log(`RETRIED: ${results.retried.map((r) => r.test).join(", ")}`);
 console.log(failed ? `${failed} FAILED` : "ALL BROWSER CHECKS PASSED");
