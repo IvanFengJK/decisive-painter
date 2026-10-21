@@ -10,12 +10,16 @@ const [dir, file] = process.argv.slice(2);
 const key = JSON.parse(readFileSync(join(dir, "key.json"), "utf8"));
 const coverage = readFileSync(join(dir, "coverage.md"), "utf8");
 const fellBack = new Set([...coverage.matchAll(/^\| (\d\d) \| .* \| fell back/gm)].map((m) => m[1]));
-const rows = readFileSync(file, "utf8").trim().split("\n").slice(1).map((l) => {
-  const id = l.slice(0, 2);
-  const rank = (l.split(",").pop() || "").trim().toUpperCase().replace(/[^ABC]/g, "");
+// a ranking is either one cell ("BCA") or one letter per cell after the prompt (best, middle, worst), as a spreadsheet
+// saves it; ids may lose their leading zero ("1" for "01")
+const rows = readFileSync(file, "utf8").replace(/\r/g, "").trim().split("\n").slice(1).map((l) => {
+  const cells = l.match(/("[^"]*"|[^,]*)(,|$)/g).map((c) => c.replace(/,$/, "").replace(/^"|"$/g, "").trim());
+  const id = cells[0].padStart(2, "0");
+  const rank = cells.slice(2).join("").toUpperCase().replace(/[^ABCD]/g, "");
   return { id, rank };
 });
-const bad = rows.filter((r) => r.rank.length !== 3 || new Set(r.rank).size !== 3);
+const n = Object.keys(Object.values(key)[0]).length;
+const bad = rows.filter((r) => r.rank.length !== n || new Set(r.rank).size !== n);
 if (bad.length) throw new Error(`rows without a full A/B/C ranking: ${bad.map((r) => r.id).join(", ")}`);
 let first = 0, fbAbove = 0;
 const per = [];
