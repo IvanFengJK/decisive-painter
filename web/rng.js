@@ -62,3 +62,20 @@ export class Rng {
 export function seedString(...parts) {
   return parts.map(String).join("|");
 }
+
+function hash2(seed, ix, iy) {
+  let h = (seed ^ Math.imul(ix, 0x27d4eb2d) ^ Math.imul(iy, 0x165667b1)) | 0;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+/** Seeded smooth value noise in [0, 1): a hashed lattice with smoothstep interpolation (no Math.random). */
+export function valueNoise(seed, x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = hash2(seed, ix, iy), b = hash2(seed, ix + 1, iy), c = hash2(seed, ix, iy + 1), e = hash2(seed, ix + 1, iy + 1);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + e) * sx * sy;
+}
