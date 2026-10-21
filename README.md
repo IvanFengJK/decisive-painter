@@ -82,14 +82,15 @@ The text box accepts short scene descriptions only.
 - **L4:** the text reaches the Director only as one delimited field.
 - **L5:** clamped numbers and debounced buttons.
 
-On two blind held-out sets, written and committed before the lists were tuned, the lists blocked no benign prompt
-(0 of 60 and 0 of 30). They missed 2 of 60 and 1 of 30 harmful ones, and those misses were fixed afterwards. Those
-blind numbers are the honest estimate. Nothing typed leaves the page unless the visitor turns on "My own endpoint" under
-Advanced, which shows a warning.
+Measured blind on two fresh held-out sets (each committed before it was run): **0% false positives** (no benign prompt
+blocked: 0 of 60 and 0 of 30) and **about 3% false negatives** (2 of 60 and 1 of 30 harmful prompts missed). Those
+misses were fixed afterwards, so every set now passes, but that is not a new measurement: the blind figures above are the
+honest estimate. The wordlist is not perfect. Nothing typed leaves the page unless the visitor turns on "My own
+endpoint" under Advanced, which shows a warning.
 
 ## Limits
 
-- The paintings are abstract: colour fields, bands and marks arranged like a scene, not recognisable objects.
+- The paintings are abstract by design: colour fields, bands and marks arranged like a scene, not recognisable objects.
 - About 60 scenes are authored. Other text falls back to generic words and a hashed look.
 - A word list is never perfect: it will miss some harmful phrasings and may block an odd harmless one.
 - Determinism was tested in Chromium and node only.
