@@ -14,11 +14,11 @@ class MockModel {
 }
 
 test("badge: the rules director today, with an empty model slot", () => {
-  assert.deepEqual(directorBadge(new RuleDirector()), { decider: "Decision-maker: Rules (authored tables)", model: "Model: none loaded" });
+  assert.deepEqual(directorBadge(new RuleDirector()), { decider: "Decision-maker: Rules (authored tables)", model: "Model: none loaded", note: "" });
 });
 
 test("badge: a mock model Director fills both lines from its name", () => {
-  assert.deepEqual(directorBadge(new MockModel()), { decider: "Decision-maker: Mock model (test)", model: "Model: Mock model (test)" });
+  assert.deepEqual(directorBadge(new MockModel()), { decider: "Decision-maker: Mock model (test)", model: "Model: Mock model (test)", note: "" });
 });
 
 test("badge: an endpoint is named but does not claim to be a model", () => {
