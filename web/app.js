@@ -1,7 +1,7 @@
 // The page: prompt -> guardrails -> look -> the harness paints mark by mark with the chosen Director and skin.
 // Visitor text is only ever written with textContent; the page makes no network request unless the visitor turns on
 // their own endpoint under Advanced.
-import { DirectorError, EndpointDirector, RuleDirector, chooseLook, directorBadge, optionsOf, paintSteps, sharpen } from "./director.js";
+import { DirectorError, EndpointDirector, RuleDirector, chooseLook, directorBadge, optionsOf, paintSteps, sharpen, validateAnswers } from "./director.js";
 import { DisabledGuard, runGuard } from "./guard.js";
 import { BLOCK_MESSAGE, check } from "./policy.js";
 import { LOOK_FIELDS, readPrompt } from "./recipes.js";
@@ -150,6 +150,92 @@ function setProgress(step, phase) {
     ? `Finished: ${app.budget} marks` : `Mark ${step} of ${app.budget}, now painting the ${phase}`;
 }
 
+// ------------------------------------------------------------------------------------------------ the odds panel
+const Q_LABEL = { gesture: "Gesture", place: "Place", size: "Size", medium: "Medium", colour: "Colour role", fill: "Fill",
+  weight: "Weight" };
+const SHOWN = 4; // the top options per question; the rest are summed into "other"
+const HELP_PAINT = "Each bar is the director's probability for one option; the picked option is marked. The pick sharpens these odds (T = 0.5) and draws with the seed.";
+const HELP_HUMAN = "The rules' probabilities for this mark. You choose; your current choice is marked.";
+
+const pct = (p) => (p > 0 && p < 0.005 ? "<1%" : `${Math.round(p * 100)}%`);
+
+/** The rows of one card: the top options, the chosen one if it ranks lower, and "other" (the sum of the rest). */
+function oddsRows(options, probs, chosen) {
+  const order = options.map((o, i) => ({ o, p: probs[i], i })).sort((a, b) => b.p - a.p || a.i - b.i);
+  const shown = order.slice(0, SHOWN);
+  if (!shown.some((r) => r.o === chosen)) shown.push(order.find((r) => r.o === chosen));
+  const rest = order.filter((r) => !shown.includes(r));
+  const rows = shown.map((r) => ({ label: r.o, option: r.o, p: r.p, chosen: r.o === chosen }));
+  if (rest.length) rows.push({ label: `other (${rest.length})`, option: "", p: rest.reduce((a, r) => a + r.p, 0), chosen: false, other: true });
+  return rows;
+}
+
+/** One card per question; the numbers are the Director's answers as validated by the harness (no other maths). */
+function renderOdds({ step, budget, qs, P, chosen, human = false }) {
+  const box = $("odds-cards");
+  box.replaceChildren();
+  for (const q of qs) {
+    const card = document.createElement("div");
+    card.className = "odds-card";
+    card.dataset.q = q.id;
+    card.setAttribute("role", "group");
+    card.setAttribute("aria-labelledby", `odds-h-${q.id}`);
+    const h = document.createElement("h3");
+    h.id = `odds-h-${q.id}`;
+    h.textContent = Q_LABEL[q.id] || q.id;
+    const ol = document.createElement("ol");
+    ol.className = "odds-list";
+    for (const r of oddsRows(optionsOf(q), P[q.id], chosen[q.id])) {
+      const li = document.createElement("li");
+      li.dataset.option = r.option;
+      li.dataset.p = String(r.p);
+      if (r.chosen) li.classList.add("chosen");
+      if (r.other) li.classList.add("other");
+      const name = document.createElement("span");
+      name.className = "o-name";
+      name.textContent = r.label;
+      if (r.chosen) {
+        const sr = document.createElement("span");
+        sr.className = "sr-only";
+        sr.textContent = human ? " (your choice)" : " (picked)";
+        name.appendChild(sr);
+      }
+      const val = document.createElement("span");
+      val.className = "o-pct";
+      val.textContent = pct(r.p);
+      const bar = document.createElement("span");
+      bar.className = "o-bar";
+      bar.setAttribute("aria-hidden", "true");
+      const fill = document.createElement("span");
+      fill.className = "o-fill";
+      fill.style.width = `${(r.p * 100).toFixed(1)}%`;
+      bar.appendChild(fill);
+      li.append(name, val, bar);
+      ol.appendChild(li);
+    }
+    card.append(h, ol);
+    box.appendChild(card);
+  }
+  $("odds-mark").textContent = human ? `for mark ${step} of ${budget} (you choose)` : `for mark ${step} of ${budget}`;
+  $("odds-help").textContent = human ? HELP_HUMAN : HELP_PAINT;
+  $("odds").dataset.step = String(step);
+}
+
+function clearOdds() {
+  const p = document.createElement("p");
+  p.className = "odds-empty";
+  p.textContent = "Paint a scene and the odds for every mark appear here.";
+  $("odds-cards").replaceChildren(p);
+  $("odds-mark").textContent = "for each mark";
+  $("odds").dataset.step = "0";
+}
+
+function showStateText() {
+  $("sees").open = true;
+  $("sees").scrollIntoView({ block: "start", behavior: reduceMotion.matches ? "auto" : "smooth" });
+  $("state-text").focus({ preventScroll: true });
+}
+
 // ------------------------------------------------------------------------------------------------ look picker
 const FIELD_LABEL = { mood: "Mood", harmony: "Harmony", hue: "Hue family", key: "Value key", saturation: "Saturation",
   composition: "Composition", style: "Style", stroke: "Strokes", subject: "Subject" };
@@ -283,7 +369,18 @@ function renderQuestions(state, questions, resolve) {
     box.appendChild(wrap);
     sels[q.id] = sel;
   }
-  $("d-dice-all").onclick = () => { for (const q of questions) sels[q.id].value = diceFor(state, q); };
+  let odds = null;
+  const showOdds = () => {
+    if (odds) renderOdds({ step: state.step, budget: state.budget, qs: questions, P: odds,
+      chosen: Object.fromEntries(questions.map((q) => [q.id, sels[q.id].value])), human: true });
+  };
+  rules.decide(state, questions).then((a) => { odds = validateAnswers(a, questions); showOdds(); });
+  for (const q of questions) sels[q.id].addEventListener("change", showOdds);
+  for (const b of box.querySelectorAll(".dice")) b.addEventListener("click", showOdds);
+  $("d-dice-all").onclick = () => {
+    for (const q of questions) sels[q.id].value = diceFor(state, q);
+    showOdds();
+  };
   $("d-apply").onclick = () => {
     app.pending = null;
     resolve(questions.map((q) => ({ id: q.id, probs: { [sels[q.id].value]: 1 } })));
@@ -364,6 +461,7 @@ async function startPainting() {
       draw(s.painter.view());
       compute += performance.now() - t0;
       showState(s);
+      if (app.mode === "paint") renderOdds({ step: s.step, budget: app.budget, qs: s.qs, P: s.P, chosen: s.d });
       setProgress(s.step, s.phase);
       describeCanvas(false, s.step);
       await waitTurn(token);
@@ -399,6 +497,7 @@ function showBlocked(message) {
   setReading("");
   $("state-text").textContent = "No painting yet.";
   $("answers").replaceChildren();
+  clearOdds();
   $("director-ui").hidden = true;
   $("look").open = false;
   history.replaceState(null, "", location.pathname + location.search);
@@ -664,6 +763,7 @@ function wire() {
     app.stepOnce = true;
   });
   $("replay").addEventListener("click", () => startPainting());
+  $("show-state").addEventListener("click", showStateText);
   $("download").addEventListener("click", () => downloadCanvas(exportCanvas(), fileName(app)));
   $("copy-link").addEventListener("click", copyLink);
   $("save").addEventListener("click", () => {

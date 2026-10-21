@@ -56,6 +56,17 @@
     <p id="notice" class="notice" role="status" aria-live="polite"></p>
   </section>
 
+  <section id="odds" class="odds" aria-labelledby="odds-title" data-step="0">
+    <div class="odds-head">
+      <h2 id="odds-title">The odds <span id="odds-mark">for each mark</span></h2>
+      <button type="button" id="show-state" class="small-btn" aria-controls="sees">State text</button>
+    </div>
+    <p id="odds-help" class="help">Each bar is the director's probability for one option; the picked option is marked. The pick sharpens these odds (T = 0.5) and draws with the seed.</p>
+    <div id="odds-cards" class="odds-cards" role="region" aria-label="Odds per question, one card each; scroll sideways for more" tabindex="0">
+      <p class="odds-empty">Paint a scene and the odds for every mark appear here.</p>
+    </div>
+  </section>
+
   <section class="sheet" aria-label="Controls">
     <div class="tabs" role="tablist" aria-label="Mode">
       <button type="button" role="tab" id="tab-paint" aria-selected="true" aria-controls="panel-mode">Watch it paint</button>

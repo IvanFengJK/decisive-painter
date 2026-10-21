@@ -120,6 +120,37 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
 
 .notice { min-height: 1.5em; margin: 8px 0 0; font-size: 0.95rem; overflow-wrap: anywhere; }
 
+/* ---------------------------------------------------------------------------------------- the odds panel */
+.odds { margin-top: 14px; }
+.odds-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.odds h2 { margin: 0; font-size: 1rem; }
+.odds .help { margin: 2px 0 8px; }
+.small-btn { min-height: 36px; padding: 4px 12px; font-size: 0.875rem; }
+.odds-cards {
+  position: relative; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  padding: 2px 2px 10px; margin: 0 -2px;
+}
+.odds-empty { margin: 0; padding: 12px; color: var(--muted); font-size: 0.9rem; }
+.odds-card {
+  flex: 0 0 78%; scroll-snap-align: start; padding: 10px 12px; position: relative;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.odds-card h3 { margin: 0 0 6px; font-size: 0.875rem; }
+.odds-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.odds-list li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name pct" "bar bar";
+  column-gap: 8px; font-size: 0.8125rem; line-height: 1.35;
+}
+.o-name { grid-area: name; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.o-pct { grid-area: pct; color: var(--muted); font-variant-numeric: tabular-nums; }
+.o-bar { grid-area: bar; height: 6px; margin-top: 2px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.o-fill { display: block; height: 100%; background: var(--line-strong); }
+.odds-list li.chosen .o-name { font-weight: 700; }
+.odds-list li.chosen .o-name::before { content: "\2713  "; }
+.odds-list li.chosen .o-pct { color: var(--fg); font-weight: 650; }
+.odds-list li.chosen .o-fill { background: var(--accent); }
+.odds-list li.other .o-name { font-style: italic; color: var(--muted); }
+
 /* ---------------------------------------------------------------------------------------- controls (bottom sheet) */
 .sheet {
   margin: 12px -16px 0;
@@ -266,14 +297,20 @@ h3.small { font-size: 0.9rem; margin: 12px 0 4px; }
     padding: 0 32px;
     align-items: start;
   }
-  .stage { position: sticky; top: 12px; }
-  .frame { width: min(100%, calc(100vh - 270px)); margin: 0 auto; }
-  .intro, .progress-row, .transport, .notice, .again-help { width: min(100%, calc(100vh - 270px)); margin-left: auto; margin-right: auto; }
+  .layout { grid-template-areas: "stage odds" "stage sheet"; grid-template-rows: auto 1fr; }
+  .stage { position: sticky; top: 12px; grid-area: stage; }
+  .odds { grid-area: odds; margin-top: 0; }
+  .odds-card { flex-basis: 172px; }
+  .frame { width: min(100%, calc(100vh - 300px)); margin: 0 auto; }
+  .progress-row { width: min(100%, calc(100vh - 300px)); margin-left: auto; margin-right: auto; }
+  .transport { justify-content: center; }
+  .notice, .again-help { text-align: center; }
+  .intro { flex-wrap: nowrap; }
+  .who { flex-direction: column; align-items: flex-end; flex: 0 0 auto; }
   .sheet {
     margin: 0;
     border-radius: 14px;
-    max-height: calc(100vh - 80px);
-    overflow: auto;
+    grid-area: sheet;
     box-shadow: 0 0 0 1px var(--line), 0 6px 24px rgb(40 30 20 / 0.06);
   }
   .sheet::before { display: none; }
