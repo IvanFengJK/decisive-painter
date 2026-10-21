@@ -66,7 +66,7 @@ paths point to the files here, and two entries about the research repository and
   letter-joining swallowing the article "a"); a SECOND held-out set (30 + 30) was then committed and run once (v.6):
   0/30, 1/30 ("ex wife" without a hyphen); that pattern was fixed (v.7). All three sets now pass fully, but only the
   blind numbers above are honest generalisation estimates.
-- **D19 Be the director** (called "Be the art director" until v1.1.0). A HumanDirector implements the same interface; each question is a select pre-filled
+- **D19 Be the director** (removed in v2; called "Be the art director" until v1.1.0). A HumanDirector implements the same interface; each question is a select pre-filled
   with a weighted pick from the RuleDirector (the die re-rolls one; "Let the director choose all" re-rolls all). In this
   mode the state panel shows the state being decided, not the previous one.
 - **D20 Colour count (T3).** Distinct colours after quantising each channel to steps of 24 and ignoring colours under

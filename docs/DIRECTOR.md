@@ -56,9 +56,12 @@ Last marks: 21. block at left wing, secondary; 22. ...
 
 ### Implementations in this site
 
-The page's badge is read from the Director in use: "Decision-maker: <name>", and "Model: <name>" when its `kind` is
-`"model"` (otherwise "Model: none loaded"). Swapping in a model Director changes the badge with no page edits
-(`directorBadge` in `director.js`; tested in `tests/badge.test.mjs` with a mock named "Mock model (test)").
+The page's badge is read from the Director that decided the painting on screen (`decisionBadge` in `director.js`):
+"Decision-maker: Rules (authored tables)", "Decision-maker: Qwen3-0.6B (running in your browser)" with a note saying what
+the model decided ("recipe: model, marks: authored weights" on Gesture; "Model on a 6x6 grid, interpolated" or "...,
+blended with rules" on the map), or "Decision-maker: <name>" for any other Director. A second line names the model slot
+("Model: none loaded", or the loaded model and whether it decided this painting). `directorBadge` (tested in
+`tests/badge.test.mjs` with a mock named "Mock model (test)") gives the same lines from a Director alone.
 
 - `RuleDirector` (default, name "Rules (authored tables)", kind `"rules"`): authored recipes + generic words for the look; per mark, phase weights computed from Kev-4B
   traces with authored subject and style multipliers (`director.js`). No AI model.
@@ -66,7 +69,10 @@ The page's badge is read from the Director in use: "Decision-maker: <name>", and
   expects `{ "answers": [{ "id": "...", "probs": {...} }] }`. 20 s timeout, no credentials, no referrer. The page's
   CSP allows `connect-src` to the same origin and to `http://localhost:*` / `http://127.0.0.1:*` only; to use a remote
   server, add its origin to the CSP in `index.html`.
-- `HumanDirector` ("Be the director"): the visitor's choices as one-hot answers; the dice ask the RuleDirector.
+- `ModelDirector` (Model mode, below): the six recipe questions and the map's cell questions; per-mark questions go to
+  the RuleDirector.
+- `MockDirector` (`field.js`, tests only): uniform odds for any question.
+- The "Be the director" mode (a `HumanDirector`) was removed in v2.
 
 ### Example: a WebGPU model in the browser
 
