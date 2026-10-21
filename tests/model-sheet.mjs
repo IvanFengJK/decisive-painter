@@ -44,9 +44,19 @@ for (let r = 0; r < rows; r++) {
   const row = { prompt };
   await p.eval("document.getElementById('seed').value = '7'; 1");
   // Gesture: Rules, then Model (the recipe from the model, marks by the authored weights)
-  await click("tab-gesture");
-  await decider("rules");
-  row.gesture_rules = { ms: await paint(prompt), ...(await state()) };
+  // back to Gesture and Rules for this prompt: switching the toggle repaints by itself, so the words go in first (a
+  // second Paint click inside the page's 400 ms debounce would be ignored)
+  await p.eval(`document.getElementById('prompt').value = ${JSON.stringify(prompt)}; 1`);
+  if (r > 0) {
+    const bt = await done();
+    await click("tab-gesture");
+    await waitDone(bt);
+    const bd = await done();
+    const tr = Date.now();
+    await decider("rules");
+    await waitDone(bd);
+    row.gesture_rules = { ms: Date.now() - tr, ...(await state()) };
+  } else row.gesture_rules = { ms: await paint(prompt), ...(await state()) };
   put(await grab(), r, 0);
   await decider("model");
   const b = await done();
