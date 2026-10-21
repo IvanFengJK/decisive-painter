@@ -89,6 +89,13 @@ a { color: var(--fg); text-underline-offset: 3px; }
 .tip { display: none; position: absolute; z-index: 5; right: 0; top: calc(100% + 6px); width: min(260px, 80vw); padding: 8px 10px;
   background: var(--fg); color: var(--bg); border-radius: 8px; font-size: 0.8125rem; line-height: 1.4; }
 .tip-btn:hover + .tip, .tip-btn:focus + .tip { display: block; }
+.badge-note { margin: 0; font-size: 0.75rem; color: var(--muted); max-width: 34ch; text-align: right; }
+.decider { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); }
+.decider legend { padding: 0 4px; font-weight: 600; font-size: 0.95rem; }
+.decider .seg { display: flex; gap: 16px; margin: 2px 0 8px; }
+.decider .seg label { display: inline-flex; align-items: center; gap: 6px; }
+.decider progress { display: block; width: 100%; margin-top: 8px; }
+.decider progress[hidden] { display: none; }
 .frame {
   width: 100%;
   aspect-ratio: 1 / 1;

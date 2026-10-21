@@ -3,6 +3,7 @@
 // their own endpoint under Advanced.
 import { DirectorError, EndpointDirector, RuleDirector, chooseLook, directorBadge, optionsOf, paintSteps, sharpen, validateAnswers } from "./director.js";
 import { DisabledGuard, runGuard } from "./guard.js";
+import { MODEL_QUESTIONS, ModelSlot } from "./model-director.js";
 import { BLOCK_MESSAGE, check } from "./policy.js";
 import { LOOK_FIELDS, readPrompt } from "./recipes.js";
 import { PIXEL_N, enginePalette, hexRgb } from "./render.js";
@@ -18,6 +19,9 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const PACE_MS = 90; // pause between marks so the painting can be watched (0 with reduced motion)
 
 const rules = new RuleDirector();
+// Model mode: nothing of the model (not even its loader) is fetched until the visitor presses "Load model".
+const slot = new ModelSlot((opts) => import("./model-loader.js").then((m) => m.loadModel(opts)));
+const MODEL_MB = "gpu" in navigator ? 600 : 650; // WebGPU uses the q4f16 build, WASM the int8 build
 const guard = new DisabledGuard();
 
 const app = {
@@ -37,6 +41,7 @@ const app = {
   msPerMark: { paint: 40, pixel: 8, sketch: 12 },
   pending: null,
   diceCount: 0,
+  lookTicket: 0,
   runs: 0,
 };
 
@@ -401,7 +406,7 @@ function cancelRun() {
 function currentDirector() {
   if (app.mode === "director") return new HumanDirector();
   if (radioValue("director") === "endpoint") return new EndpointDirector($("endpoint-url").value.trim());
-  return rules;
+  return slot.decider(rules); // the model answers the recipe; it hands every per-mark question to the rules
 }
 
 /** The badge always names the Director that answers: the rules, an endpoint, the visitor, or a model. */
@@ -409,6 +414,8 @@ function showBadge(director) {
   const b = directorBadge(director);
   $("badge-decider").textContent = b.decider;
   $("badge-model").textContent = b.model;
+  $("badge-note").textContent = b.note;
+  $("badge-note").hidden = !b.note;
 }
 
 function badgeForChoice() {
@@ -526,16 +533,20 @@ async function onPaint(ev) {
   app.prompt = r.text;
   readSeed(r.text);
   const info = readPrompt(r.text);
+  const ticket = ++app.lookTicket;
   try {
-    const dir = radioValue("director") === "endpoint" && app.mode === "paint" ? currentDirector() : rules;
-    app.look = await chooseLook(dir, r.text, app.budget);
+    app.look = await chooseRecipe(r.text);
   } catch (e) {
     notice(e instanceof DirectorError ? `The director stopped: ${e.message}.` : "The director could not choose a look.");
     return;
   }
+  if (ticket !== app.lookTicket) return; // a newer request replaced this one while the model was reading
   fillLookFields(app.look);
   applyAccent(app.look);
-  if (info.known) {
+  if (slot.mode === "model" && app.mode === "paint" && radioValue("director") !== "endpoint") {
+    const l = app.look;
+    setReading(`Recipe from the model: ${l.mood} mood, ${l.harmony} harmony, ${l.hue} family, ${l.key} key, ${l.saturation}, ${l.composition}. An abstract, scene-like painting, not a picture of the thing.`);
+  } else if (info.known) {
     setReading(`Read as: ${info.matched.join(", ")}. An abstract, scene-like painting, not a picture of the thing.`);
   } else {
     setReading("I don't know that scene, so this is a free-form painting. Steer it with \"Adjust the look\".");
@@ -552,8 +563,62 @@ function askAgain() {
   app.seed = a[0] % (SEED_MAX + 1);
   app.seedFromText = false;
   $("seed").value = String(app.seed);
+  if (slot.mode === "model" && app.prompt && radioValue("director") !== "endpoint") {
+    const ticket = ++app.lookTicket;
+    chooseRecipe(app.prompt).then((look) => {
+      if (ticket !== app.lookTicket) return;
+      app.look = look;
+      fillLookFields(look);
+      applyAccent(look);
+      notice(`Asked again with seed ${app.seed}: same words, a new draw from the model's recipe odds and new picks for the marks.`);
+      startPainting();
+    }, (e) => notice(e instanceof DirectorError ? `The director stopped: ${e.message}.` : "The director could not choose a look."));
+    return;
+  }
   notice(`Asked again with seed ${app.seed}: same words and look, new picks from the same odds.`);
   startPainting();
+}
+
+// ------------------------------------------------------------------------------------------------ model mode
+async function loadModelClicked() {
+  const btn = $("load-model");
+  btn.disabled = true;
+  $("model-progress").hidden = false;
+  $("model-progress").value = 0;
+  $("model-status").textContent = `Downloading the model (about ${MODEL_MB} MB, once; your words are not sent)...`;
+  const state = await slot.start({ onProgress: ({ loaded, total }) => {
+    $("model-progress").value = total ? loaded / total : 0;
+    $("model-status").textContent = `Downloading the model: ${Math.round(loaded / 1e6)} of about ${Math.round(total / 1e6)} MB...`;
+  } });
+  $("model-progress").hidden = true;
+  if (state === "ready") {
+    const i = slot.director.info;
+    btn.textContent = "Model loaded";
+    $("decider-model").disabled = false;
+    setRadio("decider", "model");
+    $("model-status").textContent = `Loaded ${i.name} (${i.dtype}, ${i.mb} MB, ${i.backend}) in ${i.loadSeconds} s${i.cached ? "; kept in this browser's cache" : ""}. Model mode is on.`;
+    badgeForChoice();
+    if ($("prompt").value.trim()) onPaint();
+  } else {
+    btn.disabled = false;
+    btn.textContent = `Try loading the model again (about ${MODEL_MB} MB)`;
+    setRadio("decider", "rules");
+    $("model-status").textContent = `Model mode is not available: ${slot.error}. The rules stay on.`;
+    badgeForChoice();
+  }
+}
+
+/** The look for these words: the endpoint or the model when chosen, else the rules (top picks, as before). */
+async function chooseRecipe(text) {
+  if (radioValue("director") === "endpoint" && app.mode === "paint") return chooseLook(currentDirector(), text, app.budget);
+  if (slot.mode !== "model" || app.mode !== "paint") return chooseLook(rules, text, app.budget);
+  notice("The model is reading your words to choose the recipe (six questions, a few seconds each)...");
+  $("progress-label").textContent = "Choosing the recipe...";
+  slot.director.onQuestion = (k, n) => { $("progress-label").textContent = k < n ? `The model is choosing the recipe: question ${k + 1} of ${n}...` : "Recipe chosen."; };
+  const look = await chooseLook(slot.director, text, app.budget, { weighted: MODEL_QUESTIONS, seed: app.seed });
+  showBadge(slot.director);
+  notice("");
+  return look;
 }
 
 function readSeed(text) {
@@ -786,6 +851,15 @@ function wire() {
     renderGallery();
   });
   $("again").addEventListener("click", askAgain);
+  $("load-model").textContent = `Load model (about ${MODEL_MB} MB)`;
+  $("load-model").addEventListener("click", loadModelClicked);
+  for (const el of document.querySelectorAll('input[name="decider"]')) {
+    el.addEventListener("change", () => {
+      setRadio("decider", slot.setMode(radioValue("decider")));
+      badgeForChoice();
+      if ($("prompt").value.trim() && app.look) onPaint();
+    });
+  }
   $("budget").addEventListener("input", () => {
     app.budget = clampInt($("budget").value, BUDGET_MIN, BUDGET_MAX, BUDGET_DEFAULT);
     $("budget-out").textContent = String(app.budget);
