@@ -131,13 +131,14 @@ export class Page {
   /**
    * Reroute or block requests to the model hosts. decide(url) returns a new URL (served instead, unseen by the page),
    * "block" (the request fails as if the network refused it), or null (the request goes out unchanged).
+   * patterns: the URLs to intercept (["*"] sees every request, including those of the page's workers).
    */
-  async route(decide) {
+  async route(decide, patterns = ["https://huggingface.co/*", "https://*.hf.co/*", "https://cdn.jsdelivr.net/*"]) {
     this.routed = [];
-    await this.send("Fetch.enable", { patterns: ["https://huggingface.co/*", "https://*.hf.co/*", "https://cdn.jsdelivr.net/*"].map((urlPattern) => ({ urlPattern })) });
+    await this.send("Fetch.enable", { patterns: patterns.map((urlPattern) => ({ urlPattern })) });
     this.on("Fetch.requestPaused", (e) => {
       const r = decide(e.request.url);
-      this.routed.push({ url: e.request.url, to: r });
+      this.routed.push({ url: e.request.url, to: r, body: e.request.postData || "" });
       if (r === "block") this.send("Fetch.failRequest", { requestId: e.requestId, errorReason: "BlockedByClient" }).catch(() => {});
       else this.send("Fetch.continueRequest", { requestId: e.requestId, ...(r ? { url: r } : {}) }).catch(() => {});
     });

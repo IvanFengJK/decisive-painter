@@ -1076,7 +1076,7 @@ async function downloadRecipe(e) {
   } else {
     let last = null;
     for await (const s of paintSteps({ prompt: "(saved painting)", look: e.look, seed: e.seed, budget: e.budget, skin: e.style,
-      director: rules, mode: e.mode })) last = s;
+      director: rules, mode: e.mode, tick: () => sleep(0) })) last = s;
     v = last.painter.view();
   }
   const cv = document.createElement("canvas");
@@ -1275,7 +1275,7 @@ async function benchmark() {
     let ms = 0;
     let n = 0;
     let t0 = performance.now();
-    for await (const s of paintSteps({ prompt: "benchmark", look, seed: 1, budget: 10, skin, director: rules })) {
+    for await (const s of paintSteps({ prompt: "benchmark", look, seed: 1, budget: 10, skin, director: rules, tick: () => sleep(0) })) {
       ms += performance.now() - t0;
       n = s.step;
       if (n >= 4) break;

@@ -644,9 +644,9 @@ if (run("model")) {
       return existsSync(mirrorPath(MIR, `${x.origin}${x.pathname}`)) ? `${mirror.url}/${x.host}${x.pathname}` : "block";
     };
     const HOSTS = /^https:\/\/(huggingface\.co|[a-z0-9.-]+\.hf\.co|cdn\.jsdelivr\.net)\//;
-    const openM = async (view, theme, decide) => {
+    const openM = async (view, theme, decide, patterns) => {
       const p = await browser.newPage({ ...VIEWS[view], dark: theme === "dark" });
-      await p.route(decide);
+      await p.route(decide, patterns);
       await p.goto(url);
       return p;
     };
@@ -657,11 +657,11 @@ if (run("model")) {
     const lookOK = (p) => p.eval(`Object.entries(${js(LOOK_FIELDS)}).every(([f, o]) => o.includes(document.getElementById('look-' + f).value))`);
     const loaded = (p) => p.waitFor("/^Loaded|not available/.test(document.getElementById('model-status').textContent)", 900000);
     const decider = (p, v) => p.eval(`(() => { const r = document.querySelector('input[name=decider][value=${v}]'); r.checked = true; r.dispatchEvent(new Event('change')); return 1; })()`);
-    // peak memory: the RSS of every Chromium process, sampled from outside every 2 s
+    // peak memory: the RSS of every Chromium process (browser, renderer, workers' host), sampled from outside every 2 s
     let peakMb = 0;
     const memTimer = setInterval(() => {
       try {
-        const kb = execSync(`ps -C chrome,chromium,chromium-browser,headless_shell -o rss= 2>/dev/null || true`).toString().split(/\s+/).filter(Boolean).reduce((x, v) => x + Number(v), 0);
+        const kb = execSync(`ps -eo rss=,args= | grep -E 'chrom(e|ium)' | grep -v grep | awk '{s+=$1} END {print s+0}'`).toString().trim().split(/\s+/).reduce((x, v) => x + Number(v), 0);
         peakMb = Math.max(peakMb, Math.round(kb / 1024));
       } catch { /* ps unavailable */ }
     }, 2000);
@@ -695,12 +695,14 @@ if (run("model")) {
       check("T8 Cancel loading stops the download and keeps Rules", /loading was cancelled/.test(s.status) && s.decider === "rules" && s.modelDisabled, s.status);
       await p.close();
     }
-    // 3. load, Gesture recipe, Map 6x6, cancel, guardrails, injection
-    const p = await openM("desktop", "light", viaMirror || (() => null));
+    // 3. load, Gesture recipe, Map 6x6, cancel, guardrails, injection. Every request of the page and its workers is
+    // intercepted here: the page's own files go through, the model hosts go to the mirror, anything else is blocked.
+    const all = (u) => (u.startsWith(url) ? null : HOSTS.test(u) ? (viaMirror ? viaMirror(u) : null) : "block");
+    const p = await openM("desktop", "light", all, ["*"]);
     await watchLong(p);
     await sleep(1200);
-    const n0 = p.requests.length;
-    check("T8 no request before the click except the page's own files (no worker, no library)", p.requests.every((r) => r.url.startsWith(url) && !/model-(loader|worker|host)|vendor\//.test(r.url)), p.requests.map((r) => r.url).filter((u) => !u.startsWith(url)));
+    const n0 = p.routed.length;
+    check("T8 no request before the click except the page's own files (no worker, no library, no model host)", p.routed.every((r) => r.url.startsWith(url) && !/model-(loader|worker|host)|vendor\//.test(r.url)), p.routed.map((r) => r.url).filter((u) => !u.startsWith(url)));
     const t0 = Date.now();
     await p.eval("document.getElementById('load-model').click(); 1");
     await loaded(p);
@@ -784,11 +786,11 @@ if (run("model")) {
       inj.push({ prompt: s, ms: ims, ok, reading: st.reading });
       check(`T8 injection-like prompt keeps the fixed options ("${s.slice(0, 30)}...")`, ok && /^Recipe from the model: /.test(st.reading) && !/stopped/.test(st.notice), st.reading);
     }
-    const after = p.requests.slice(n0);
+    const after = p.routed.slice(n0);
     const words = /sunflower|noon|ignore|pirate|hardcore|porn|SYSTEM/i;
-    const hosts = [...new Set(after.map((r) => new URL(r.url).host))];
-    check("T8 after the click only the page's own files and the model and runtime hosts are requested", after.every((r) => r.url.startsWith(url) || HOSTS.test(r.url)), hosts);
-    check("T8 the visitor's words are in no request (URL or body)", !p.requests.some((r) => words.test(r.url) || words.test(r.body)), p.requests.filter((r) => words.test(r.url + r.body)).map((r) => r.url));
+    const hosts = [...new Set(after.map((r) => new URL(r.url).host))].map((h) => (url.includes(h) ? "(this page)" : h));
+    check("T8 after the click only the page's own files and the model and runtime hosts are requested (page and worker)", after.length > 0 && after.every((r) => r.url.startsWith(url) || HOSTS.test(r.url)), hosts);
+    check("T8 the visitor's words are in no request (URL or body, page and worker)", ![...p.requests, ...p.routed].some((r) => words.test(r.url) || words.test(r.body)), p.routed.filter((r) => words.test(r.url + r.body)).map((r) => r.url));
     check("T8 no console or CSP errors", p.errors.length === 0, p.errors.slice(0, 3));
     clearInterval(memTimer);
     results.model = { ...results.model, load_ms: loadMs, status: s2.status, gesture_ms: gMs, gesture_badge: s3, injection: inj, gate,
