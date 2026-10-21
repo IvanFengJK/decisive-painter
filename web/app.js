@@ -424,6 +424,7 @@ function setRunning(running) {
   $("pause").disabled = !running || dirMode;
   $("step").disabled = !running || dirMode;
   for (const id of ["replay", "download", "copy-link", "save"]) $(id).disabled = !app.look;
+  $("again").disabled = !app.look || dirMode;
 }
 
 async function waitTurn(token) {
@@ -540,6 +541,18 @@ async function onPaint(ev) {
     setReading("I don't know that scene, so this is a free-form painting. Steer it with \"Adjust the look\".");
     $("look").open = true;
   }
+  startPainting();
+}
+
+/** Ask it again: the same words and look with a fresh random seed, so only the seeded picks from the odds change. */
+function askAgain() {
+  if (!app.look || app.mode !== "paint") return;
+  const a = new Uint32Array(1);
+  crypto.getRandomValues(a);
+  app.seed = a[0] % (SEED_MAX + 1);
+  app.seedFromText = false;
+  $("seed").value = String(app.seed);
+  notice(`Asked again with seed ${app.seed}: same words and look, new picks from the same odds.`);
   startPainting();
 }
 
@@ -772,16 +785,7 @@ function wire() {
     notice(ok ? "Saved in this browser." : "This browser is not letting the page store anything, so it was not saved.");
     renderGallery();
   });
-  $("surprise").addEventListener("click", () => {
-    const a = new Uint32Array(1);
-    crypto.getRandomValues(a);
-    $("seed").value = String(a[0] % (SEED_MAX + 1));
-    if (app.look) {
-      app.seed = Number($("seed").value);
-      app.seedFromText = false;
-      startPainting();
-    } else onPaint();
-  });
+  $("again").addEventListener("click", askAgain);
   $("budget").addEventListener("input", () => {
     app.budget = clampInt($("budget").value, BUDGET_MIN, BUDGET_MAX, BUDGET_DEFAULT);
     $("budget-out").textContent = String(app.budget);

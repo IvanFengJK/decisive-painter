@@ -226,7 +226,7 @@ input[type="radio"] { width: 18px; height: 18px; accent-color: var(--accent); ma
 .budget label { font-weight: 600; }
 input[type="range"] { width: 100%; accent-color: var(--accent); min-height: 32px; }
 
-.seed-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+.seed-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
 .seed-row label { font-weight: 600; }
 .seed-row .help { grid-column: 1 / -1; margin-top: 0; }
 

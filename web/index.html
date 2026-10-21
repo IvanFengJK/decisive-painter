@@ -49,10 +49,12 @@
       <button type="button" id="pause" disabled>Pause</button>
       <button type="button" id="step" disabled>Next mark</button>
       <button type="button" id="replay" disabled>Replay</button>
+      <button type="button" id="again" disabled aria-describedby="again-help">Ask it again</button>
       <button type="button" id="download" disabled>Download PNG</button>
       <button type="button" id="copy-link" disabled>Copy link</button>
       <button type="button" id="save" disabled>Save</button>
     </div>
+    <p id="again-help" class="help again-help">Ask it again: the same words with a new seed. The variety comes from picking by the odds.</p>
     <p id="notice" class="notice" role="status" aria-live="polite"></p>
   </section>
 
@@ -111,7 +113,6 @@
       <div class="row seed-row">
         <label for="seed">Seed</label>
         <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="from the text" aria-describedby="seed-help">
-        <button type="button" id="surprise">Surprise me</button>
         <p id="seed-help" class="help">Same scene, seed, marks, skin and version give the same painting.</p>
       </div>
 
