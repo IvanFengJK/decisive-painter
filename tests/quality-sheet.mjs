@@ -3,6 +3,7 @@
 //   MODEL_MIRROR=<dir> node tests/quality-sheet.mjs <outdir>      (or MODEL_LIVE=1)
 // Writes <outdir>/sheet.html, thumbs/, key.json (do not open before judging), answers.csv (empty form),
 // coverage.md (which prompts the keyword table matched), model-looks.json, and validates the sheet.
+// KEV_LOOKS=<kev-looks.json> adds Kev-0.6B (the trained decision model, Track B) as a fourth card (columns A-D); use another <outdir>.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -95,7 +96,10 @@ mkdirSync(join(OUT, "thumbs"), { recursive: true });
 for (const s of PROMPTS) if (!check(s).ok) throw new Error(`guardrail blocks "${s}"`);
 const ml = existsSync(join(OUT, "model-looks.json")) ? JSON.parse(readFileSync(join(OUT, "model-looks.json"), "utf8")) : await modelLooks();
 writeFileSync(join(OUT, "model-looks.json"), JSON.stringify(ml, null, 1));
-const rng = new Rng("quality-sheet-r23");
+const kevLooks = process.env.KEV_LOOKS ? JSON.parse(readFileSync(process.env.KEV_LOOKS, "utf8")) : null;
+const SOURCES = kevLooks ? ["rules", "model", "kev", "hash"] : ["rules", "model", "hash"];
+const LABELS = "ABCD".slice(0, SOURCES.length);
+const rng = new Rng(kevLooks ? "quality-sheet-r23-kev" : "quality-sheet-r23");
 const key = {}, coverage = [], rows = [];
 for (const [i, prompt] of PROMPTS.entries()) {
   const id = String(i + 1).padStart(2, "0");
@@ -105,14 +109,15 @@ for (const [i, prompt] of PROMPTS.entries()) {
   const modelLook = ml.out[i].look;
   if (ml.out[i].prompt !== prompt) throw new Error("model looks out of order");
   const cards = { rules: rulesLook, model: modelLook, hash: hashBaseline(prompt, rulesLook) };
+  if (kevLooks) { if (kevLooks.out[i].prompt !== prompt) throw new Error("kev looks out of order"); cards.kev = kevLooks.out[i].look; }
   const kind = info.scene ? "scene" : info.known ? "generic" : "hash";
   coverage.push({ id, prompt, kind, matched: info.matched });
-  const order = ["rules", "model", "hash"];
+  const order = SOURCES.slice();
   for (let j = order.length - 1; j > 0; j--) { const r = Math.floor(rng.random() * (j + 1)); [order[j], order[r]] = [order[r], order[j]]; }
-  key[id] = Object.fromEntries(order.map((src, j) => ["ABC"[j], src]));
+  key[id] = Object.fromEntries(order.map((src, j) => [LABELS[j], src]));
   const cells = [];
   for (const [j, src] of order.entries()) {
-    const L = "ABC"[j];
+    const L = LABELS[j];
     const look = cards[src];
     const pal = enginePalette(look).roles;
     const t = await thumb(look, seed);
@@ -128,11 +133,11 @@ body{font:14px/1.4 system-ui,sans-serif;margin:16px;background:#f6f1e7;color:#1f
 .p{width:190px} .num{width:28px} .card{width:162px;overflow:hidden} .lab{display:block;font-size:13px} .pal{display:flex;gap:2px;margin:3px 0}
 .sw{display:inline-block;width:24px;height:16px;border:1px solid #0002} img{display:block;width:150px;height:150px}
 </style></head><body><h1>Recipe sheet (Round 23)</h1>
-<p>For each prompt, three recipes (mood, harmony, hue family, value key, saturation, composition) in shuffled columns A, B, C:
-one from the rules, one from the model, one from a plain hash of the words. Each card shows the six role colours and the
-first 12 marks of a 30-mark painting with the same seed. Rank the three cards per prompt from the best fit to the words
-to the worst, in answers.csv (for example <code>BCA</code>). The key is in key.json; please do not open it until you have finished.</p>
-<table><tr><th>#</th><th>prompt</th><th>A</th><th>B</th><th>C</th></tr>${rows.join("\n")}</table></body></html>`;
+<p>For each prompt, ${SOURCES.length} recipes (mood, harmony, hue family, value key, saturation, composition) in shuffled columns ${[...LABELS].join(", ")}:
+one from the rules, one from a general small language model${kevLooks ? ", one from a trained decision model" : ""}, one from a plain hash of the words. Each card shows the six role colours and the
+first 12 marks of a 30-mark painting with the same seed. Rank the ${SOURCES.length} cards per prompt from the best fit to the words
+to the worst, in answers.csv (for example <code>${kevLooks ? "BDCA" : "BCA"}</code>). The key is in key.json; please do not open it until you have finished.</p>
+<table><tr><th>#</th><th>prompt</th>${[...LABELS].map((l) => `<th>${l}</th>`).join("")}</tr>${rows.join("\n")}</table></body></html>`;
 writeFileSync(join(OUT, "sheet.html"), html);
 writeFileSync(join(OUT, "key.json"), JSON.stringify(key, null, 1));
 writeFileSync(join(OUT, "answers.csv"), "prompt_id,prompt,ranking_best_to_worst\n" + PROMPTS.map((p, i) => `${String(i + 1).padStart(2, "0")},"${p}",`).join("\n") + "\n");
@@ -147,8 +152,8 @@ await p.goto(`${url}sheet.html`);
 await p.waitFor("[...document.images].every((i) => i.complete)", 30000);
 const v = await p.eval(`(() => { const rows = [...document.querySelectorAll('tr')].slice(1); const bad = [];
   rows.forEach((r, i) => { const cards = [...r.querySelectorAll('.card')];
-    if (cards.map((c) => c.dataset.label).join('') !== 'ABC') bad.push(i + ': labels');
-    if (new Set(cards.map((c) => c.dataset.fp)).size !== 3) bad.push(i + ': repeated card');
+    if (cards.map((c) => c.dataset.label).join('') !== ${JSON.stringify(LABELS)}) bad.push(i + ': labels');
+    if (new Set(cards.map((c) => c.dataset.fp)).size !== ${SOURCES.length}) bad.push(i + ': repeated card');
     for (const c of cards) { const img = c.querySelector('img'); const cr = c.getBoundingClientRect(), ir = img.getBoundingClientRect(), td = c.parentElement.getBoundingClientRect();
       if (!img.naturalWidth) bad.push(i + ': image missing');
       if (ir.right > cr.right + 0.5 || ir.bottom > cr.bottom + 0.5 || cr.right > td.right + 0.5 || cr.bottom > td.bottom + 0.5) bad.push(i + ': clipped');
@@ -157,7 +162,7 @@ const v = await p.eval(`(() => { const rows = [...document.querySelectorAll('tr'
 writeFileSync(join(OUT, "sheet.png"), await p.screenshot());
 await b.close();
 server.close();
-const keyOK = Object.values(key).every((k) => Object.values(k).sort().join() === "hash,model,rules");
+const keyOK = Object.values(key).every((k) => Object.values(k).sort().join() === SOURCES.slice().sort().join());
 console.log(JSON.stringify({ rows: v.rows, problems: v.bad, key_is_a_permutation_per_row: keyOK, model_load_ms: ml.loadMs,
   ms_per_prompt: Math.round(ml.out.reduce((a, o) => a + o.ms, 0) / ml.out.length) }));
 if (v.rows !== 40 || v.bad.length || !keyOK) process.exit(1);
