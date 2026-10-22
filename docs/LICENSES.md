@@ -8,7 +8,7 @@ earlier rounds: the Round 12 renderer and lists (`harness/render.py`, `harness/l
 code rules, and the Round 15 palette engine. Licence: MIT (see `LICENSE`).
 
 One third-party file is included: `web/vendor/transformers-4.3.1.min.js` (transformers.js 4.3.1, Apache License 2.0;
-licence in `web/vendor/LICENSE-transformers.txt`), loaded only after the visitor presses Load model, inside the model's
+licence in `web/vendor/LICENSE-transformers.txt`), loaded only after the visitor presses Download and enable model, inside the model's
 Worker. Model mode then fetches at run time, and nothing of it is included:
 
 - **onnxruntime-web** `1.31.0-dev.20260914-8d85527a0` (MIT License) from cdn.jsdelivr.net: the WebAssembly runtime.

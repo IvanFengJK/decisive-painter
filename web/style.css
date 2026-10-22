@@ -335,7 +335,7 @@ h3.small { font-size: 0.9rem; margin: 12px 0 4px; }
     align-items: start;
   }
   .layout { grid-template-areas: "stage odds" "stage sheet"; grid-template-rows: auto 1fr; }
-  .stage { position: sticky; top: 12px; grid-area: stage; }
+  .stage { grid-area: stage; } /* not sticky: with the prompt and decider in it, the stage is taller than the window */
   .odds { grid-area: odds; margin-top: 0; }
   .odds-card { flex-basis: 172px; }
   .frame { width: min(100%, calc(100vh - 300px)); margin: 0 auto; }

@@ -122,7 +122,7 @@ adapter, never in the page. Check that server's terms before using its outputs.
 
 ## Model mode (`ModelDirector`, `web/model-director.js`, `web/model-loader.js`)
 
-Model mode is off by default. After the visitor presses **Load model**, a **general small language model**
+Model mode is off by default. After the visitor presses **Download and enable model**, a **general small language model**
 (Qwen3-0.6B, `onnx-community/Qwen3-0.6B-ONNX` at revision `58ca03a5e7b354b480b1a82b34bde8dc7b854cc0`, Apache-2.0) runs in
 the tab with transformers.js 4.3.1 (vendored in `web/vendor/`). It answers the **six upfront recipe questions** (mood,
 harmony, hue family, value key, saturation, composition). The other three upfront questions (style, stroke, subject) and

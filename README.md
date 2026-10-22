@@ -23,7 +23,7 @@ The decision-maker is a visible **Rules | Model** toggle on both tabs, and the b
 the painting on screen:
 
 - **Rules** (default, instant, no download): authored tables. Badge: "Decision-maker: Rules (authored tables)".
-- **Model** (after the visitor presses Load model): **Qwen3-0.6B**, int8, about 650 MB, running in a Worker on
+- **Model** (after the visitor presses Download and enable model): **Qwen3-0.6B**, int8, about 650 MB, running in a Worker on
   WebAssembly in the tab; nothing is sent to a server. Badge: "Decision-maker: Qwen3-0.6B (running in your browser)"
   plus what it decides: on Gesture "recipe: model, marks: authored weights" (the six recipe questions, about 40 s); on
   the map "Model on a 6x6 grid, interpolated" (one colour question per coarse cell, interpolated to the full grid;

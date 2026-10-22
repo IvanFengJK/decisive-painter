@@ -37,11 +37,6 @@
           <span id="slot-tip" class="tip" role="tooltip">Any Director can answer these questions; a model plugs in through the Director interface and is named here.</span></p>
       </div>
     </div>
-    <p class="mode-label">Choose how it draws</p>
-    <div class="tabs" role="tablist" aria-label="Way of drawing">
-      <button type="button" role="tab" id="tab-gesture" aria-selected="true" aria-controls="panel-gesture">Gesture</button>
-      <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">Probability map</button>
-    </div>
     <form id="prompt-form" class="prompt-row" novalidate>
       <label for="prompt" class="sr-only">Scene to paint</label>
       <input id="prompt" name="prompt" type="text" maxlength="80" autocomplete="off" spellcheck="true"
@@ -129,6 +124,12 @@
   </section>
 
   <section class="sheet" aria-label="Controls">
+    <p class="mode-label">Choose how it draws</p>
+    <div class="tabs" role="tablist" aria-label="Way of drawing">
+      <button type="button" role="tab" id="tab-gesture" aria-selected="true" aria-controls="panel-gesture">Gesture</button>
+      <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">Probability map</button>
+    </div>
+
     <p id="reading" class="reading" aria-live="polite"></p>
 
     <div id="panel-gesture" role="tabpanel" aria-labelledby="tab-gesture" class="panel-tab">
@@ -171,13 +172,10 @@
         </div>
         <p class="help">Most likely makes clean blocks; sampling shows more of each cell's colour probabilities.</p>
       </fieldset>
-      <details class="panel map-explore">
-        <summary>Explore the probabilities</summary>
-        <div class="row check-row">
-          <input type="checkbox" id="certainty" aria-describedby="certainty-help"><label for="certainty">Show certainty overlay</label>
-          <p id="certainty-help" class="help">Brighter areas have more concentrated colour odds; darker areas are less certain.</p>
-        </div>
-      </details>
+      <div class="row check-row">
+        <input type="checkbox" id="certainty" aria-describedby="certainty-help"><label for="certainty">Show certainty overlay</label>
+        <p id="certainty-help" class="help">Brighter areas have more concentrated colour odds; darker areas are less certain.</p>
+      </div>
       <details id="model-map-options" class="panel model-map">
         <summary>Model map settings</summary>
         <label for="coarse">Decision grid</label>

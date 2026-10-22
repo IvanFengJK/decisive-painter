@@ -27,7 +27,7 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const PACE_MS = 90; // pause between marks so the painting can be watched (0 with reduced motion)
 
 const rules = new RuleDirector();
-// Model mode: nothing of the model (not even its loader) is fetched until the visitor presses "Load model".
+// Model mode: nothing of the model (not even its loader) is fetched until the visitor presses "Download and enable model".
 const slot = new ModelSlot((opts) => import("./model-loader.js").then((m) => m.loadModel(opts)));
 const guard = new DisabledGuard();
 
@@ -104,11 +104,16 @@ function updateEstimate() {
     ? `The model reads your words first (six questions, about ${fmtMin(6 * (slot.director?.msPerQuestion || 10000))}); then about ${s} second${s === 1 ? "" : "s"} for the marks.`
     : `About ${s} second${s === 1 ? "" : "s"} on this device (measured here).`;
   const n = app.coarse * app.coarse;
-  $("model-map-options").hidden = slot.mode !== "model" || app.tab !== "map";
-  $("model-map-note").hidden = slot.mode !== "model" || app.tab !== "map";
   $("map-estimate").textContent = slot.mode === "model"
     ? `Model mode: ${n} questions on a ${app.coarse}x${app.coarse} grid, about ${fmtMin(n * (slot.director?.msPerQuestion || 10000))} on this device.`
     : `The rules fill every cell at once (about ${Math.max(1, Math.round(app.mapMs[app.style.map] / 1000))} s with this style).`;
+}
+
+/** The model's map settings show only on the Probability map tab in Model mode; call after a tab or decider change. */
+function syncModeControls() {
+  const modelMap = slot.mode === "model" && app.tab === "map";
+  $("model-map-options").hidden = !modelMap;
+  $("model-map-note").hidden = !modelMap;
 }
 
 // ------------------------------------------------------------------------------------------------ accent colour
@@ -785,6 +790,7 @@ function setTab(tab, { paint = true } = {}) {
   blankThumbs();
   setRunning(false);
   updateEstimate();
+  syncModeControls();
   if (changed) {
     app.painted = null;
     badgeForChoice();
@@ -904,10 +910,10 @@ function askAgain() {
 
 function readSeed(text) {
   const raw = $("seed").value.trim();
-  if (raw === "" || app.seedFromText) {
+  if (raw === "") {
     app.seed = seedFor(text);
     app.seedFromText = true;
-    $("seed").value = String(app.seed);
+    $("seed").placeholder = `Auto (${app.seed})`; // shows the seed used while the field stays blank, so it stays automatic
     return;
   }
   const v = clampInt(raw.replace(/\D/g, ""), 0, SEED_MAX, 0);
@@ -958,6 +964,7 @@ async function loadModelClicked() {
 /** After Rules <-> Model: Gesture re-reads the words (the recipe changes); Map waits for Paint before asking the model. */
 function afterDeciderChange() {
   updateEstimate();
+  syncModeControls();
   if (!$("prompt").value.trim() || !app.look) {
     app.painted = null;
     badgeForChoice();
@@ -1135,6 +1142,7 @@ function openRecipe(r, from = "link") {
     ? "A saved painting: the recipe, seed and settings are stored, not the words. Drawn with the rules."
     : "A shared painting: the link carries the recipe, seed and settings, not the words. Drawn with the rules; load the model to let it decide.");
   updateEstimate();
+  syncModeControls();
   if (app.tab !== r.tab) setTab(r.tab, { paint: false });
   repaint();
 }
@@ -1155,14 +1163,12 @@ function openFromHash() {
 // ------------------------------------------------------------------------------------------------ wiring
 function wire() {
   $("prompt-form").addEventListener("submit", onPaint);
-  $("seed").addEventListener("input", () => {
-    const value = $("seed").value.trim();
-    app.seedFromText = value === "" || value === String(app.seed);
-  });
+  $("seed").addEventListener("input", () => { $("seed").placeholder = "Auto"; }); // the last auto seed is stale once edited
   for (const button of document.querySelectorAll("[data-example]")) {
     button.addEventListener("click", () => {
       $("prompt").value = button.dataset.example;
-      $("prompt-form").requestSubmit();
+      app.lastStart = -Infinity; // a chosen example always paints; the look ticket drops any paint it replaces
+      onPaint();
     });
   }
   const tabs = ["tab-gesture", "tab-map"];

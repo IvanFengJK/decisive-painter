@@ -1,5 +1,5 @@
 // Model mode's worker: loads the vendored transformers.js and Qwen3-0.6B (ONNX, int8, WebAssembly) and scores prompts,
-// so the page's main thread stays free while the model reads. Started only after the visitor presses Load model.
+// so the page's main thread stays free while the model reads. Started only after the visitor presses Download and enable model.
 // Messages in:  { type: "load" } | { type: "score", id, text, n }
 // Messages out: { type: "progress", loaded, total } | { type: "ready", info } | { type: "scores", id, scores }
 //               | { type: "error", id?, message }
