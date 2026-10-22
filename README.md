@@ -104,8 +104,9 @@ uvx ruff check                        # Ruff over harness/ (or: pipx run ruff ch
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) runs lint, the node tests, a harness render and `browser.mjs quick` on
-every pull request and every push to `main`. Deploys stay with Vercel's Git integration: a preview for every branch,
-production for `main`.
+every pull request and every push to `main`. There the 100 ms long-task budgets are logged, not enforced
+(`PERF_REPORT_ONLY=1`), because shared runners miss them on a cold start; run the browser tests locally for those.
+Deploys stay with Vercel's Git integration: a preview for every branch, production for `main`.
 
 Model mode end to end needs the real model. Make a verified local mirror of the pinned files once (about 650 MB; the
 page's requests to the model hosts are rerouted to it by the test, unseen by the page), then:

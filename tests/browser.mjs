@@ -41,6 +41,13 @@ function check(name, ok, detail = "") {
   if (!ok) failed++;
   console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail ? ` (${typeof detail === "string" ? detail : JSON.stringify(detail)})` : ""}`);
 }
+// Long-task budgets (no main-thread task over 100 ms) measure the machine as much as the page; PERF_REPORT_ONLY=1 logs
+// them as info instead of failing, for shared CI runners. Everything else still fails as usual.
+function perfCheck(name, ok, detail) {
+  if (process.env.PERF_REPORT_ONLY !== "1") return check(name, ok, detail);
+  results.checks.push({ name, ok: !!ok, detail, reportOnly: true });
+  console.log(`info ${name}${ok ? "" : " [over budget, reported only]"} (${detail})`);
+}
 const QUICK = ["t0", "t2", "t5"]; // `quick`: first load, determinism and share links only (about 4 minutes), for everyday changes
 const run = (name) => only === "all" || only === name || (only === "quick" && QUICK.includes(name));
 
@@ -171,7 +178,7 @@ if (run("t0")) {
       && st.label.startsWith(`${NOTE} Abstract painting in 30 marks: `) && st.prompt === "" && st.placeholder === "a harbour at dawn" && st.seed === "", st);
     check("T0 the example writes no link into the address bar and says nothing in the live regions", st.hash === "" && st.reading === "" && st.notice === "" && st.done === "", st);
     check("T0 the badge says Rules (authored tables), no note", (await badge(p)).d === RULES && (await badge(p)).n === "");
-    check("T0 no main-thread task over 100 ms while the example paints (page start included)", lt.every((d) => d <= 100), `${lt.length} long tasks: ${lt.join(", ")} ms`);
+    perfCheck("T0 no main-thread task over 100 ms while the example paints (page start included)", lt.every((d) => d <= 100), `${lt.length} long tasks: ${lt.join(", ")} ms`);
     // pressing Paint replaces it; the same words give the same pixels (the example is that painting, unpaced)
     const sha0 = c.sha;
     await paint(p, EXAMPLE);
@@ -602,7 +609,7 @@ if (run("t6")) {
       await sleep(300);
       const lt = await p.eval("window.__lt");
       per[`${tab}-${style}`] = { count: lt.length, worst: lt.length ? Math.max(...lt) : 0 };
-      if (rate === 1) check(`T6 ${tab} ${style}: no main-thread block over 100 ms while painting (long-task entries)`, per[`${tab}-${style}`].worst <= 100, `${lt.length} long tasks, worst ${per[`${tab}-${style}`].worst} ms`);
+      if (rate === 1) perfCheck(`T6 ${tab} ${style}: no main-thread block over 100 ms while painting (long-task entries)`, per[`${tab}-${style}`].worst <= 100, `${lt.length} long tasks, worst ${per[`${tab}-${style}`].worst} ms`);
     }
     results.t6[`long_tasks_${rate}x`] = per;
     if (rate > 1) console.log(`info T6 long tasks at 4x (reported only): ${JSON.stringify(per)}`);
@@ -949,7 +956,7 @@ if (run("model")) {
     }
     const worst = (lt) => (lt.length ? Math.max(...lt) : 0);
     results.model.long_tasks = { gesture: lt1, map: lt2 };
-    check("T8 the page stays responsive while the model runs (no main-thread task over 100 ms during the 6x6 map)", worst(lt2) <= 100, `worst ${worst(lt2)} ms, ${lt2.length} long tasks`);
+    perfCheck("T8 the page stays responsive while the model runs (no main-thread task over 100 ms during the 6x6 map)", worst(lt2) <= 100, `worst ${worst(lt2)} ms, ${lt2.length} long tasks`);
     // cancel a map run: Cancel stops between questions, nothing more is asked
     await p.eval("document.getElementById('coarse').value = '8'; document.getElementById('coarse').dispatchEvent(new Event('change')); 1");
     await p.eval("document.getElementById('paint').click(); 1");
