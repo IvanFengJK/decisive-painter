@@ -289,6 +289,12 @@ export class ModelDirector {
       fallback: run?.fallback ? { ...run.fallback } : null };
   }
 
+  /** Forget the measured times: the backend changed (WebGPU to WebAssembly), so they no longer apply. */
+  resetTimings() {
+    this.msPerQuestion = this.msPerMarkQuestion = null;
+    this.markTimed = { ms: 0, calls: 0 };
+  }
+
   /** ms for the planned mark questions of one painting: measured on marks, else 2x the recipe's rate (its prompts are about
    * 1.5x as long, and the time grows faster than the length), else 12 s. */
   estimateMarksMs(budget) {

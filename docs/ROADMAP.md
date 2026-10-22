@@ -38,11 +38,13 @@ WebGPU kernels and still run on the CPU. Measured on one laptop (RTX 3080 Ti, Wi
 Once inference is fast enough, extend Model mode beyond choosing the upfront recipe. Let it decide selected marks during
 the Gesture painting, using the evolving painting state, while keeping the current rules-based path available.
 
-**Done (first step).** In Model mode the model also chooses the colour role of 4 of 30 marks: one or two in each phase
-after the backdrop, each time reading a short summary of the canvas so far. This adds about 50 s on WebAssembly. Those
-marks' odds cards are labelled "model", and the badge counts them. If the model fails, the rules finish the painting.
+**Done (first step, opt-in).** With "Let the model choose the colour of a few marks too" ticked (off by default), the
+model also chooses the colour role of 4 of 30 marks: one or two in each phase after the backdrop, each time reading a
+short summary of the canvas so far. This adds about 50 s on WebAssembly. Those marks' odds cards are labelled "model",
+and the badge counts them. If the model fails, the rules finish the painting.
 Open:
 
+- Check whether its colours can match the rules' before turning it on by default (so far they look worse).
 - Let the model decide more questions (gesture and place need more than eight answer letters, or a two-step menu).
 - Turn on prefix key/value reuse once it matches full prompts. With this int8 build it does not yet.
 

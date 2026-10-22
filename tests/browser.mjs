@@ -884,18 +884,28 @@ if (run("model")) {
     await p.eval(`(() => { window.__byModel = {}; const el = document.getElementById('odds');
       new MutationObserver(() => { const m = [...el.querySelectorAll('.odds-card[data-by=model]')].map((c) => c.dataset.q);
         if (m.length) window.__byModel[el.dataset.step] = m; }).observe(el, { subtree: true, childList: true, attributes: true }); return 1; })()`);
+    const marksBox = await p.eval("({ shown: !document.getElementById('model-marks-row').hidden, on: document.getElementById('model-marks').checked })");
+    check("T8 after loading, 'Let the model choose the colour of a few marks too' is offered on Gesture and off", marksBox.shown && !marksBox.on, marksBox);
+    // by default the model chooses the recipe only and the marks follow the authored weights
+    const g0 = await paint(p, PROMPT, 900000);
+    const s30 = await state(p);
+    check("T8 Gesture + Model by default: the recipe from the model, every mark from the authored weights (no card says model)",
+      s30.d === MODEL && s30.n === "recipe: model, marks: authored weights" && JSON.stringify(await p.eval("window.__byModel")) === "{}", { s30, g0 });
+    // opted in: the model also chooses the colour of the planned marks
+    await p.eval("window.__byModel = {}; const b = document.getElementById('model-marks'); b.click(); b.checked");
     const gMs = await paint(p, PROMPT, 900000);
     const s3 = await state(p);
     const c3 = await canvasInfo(p);
     check("T8 Gesture + Model paints a valid painting with a recipe from the fixed options", c3.painted > 0.05 && c3.colours >= 3 && await lookOK(p), `${c3.colours} colours, ${gMs} ms`);
     const byModel = await p.eval("window.__byModel");
-    check("T8 Gesture + Model: the model chose the colour of the planned marks (8, 13, 20, 28 of 30) and the cards say so",
+    check("T8 Gesture + Model with the box ticked: the model chose the colour of the planned marks (8, 13, 20, 28 of 30) and the cards say so",
       JSON.stringify(byModel) === JSON.stringify({ 8: ["colour"], 13: ["colour"], 20: ["colour"], 28: ["colour"] }), byModel);
-    check("T8 Gesture + Model badge: the model chose the recipe and the colour of 4 of 30 marks", s3.d === MODEL
+    check("T8 Gesture + Model badge with the box ticked: the model chose the recipe and the colour of 4 of 30 marks", s3.d === MODEL
       && s3.n === "recipe and the colour of 4 of 30 marks: model; everything else: authored weights"
       && /^Recipe from the model: /.test(s3.reading) && /^Model: Qwen3-0\.6B loaded \(int8, WASM, \d+ MB\)$/.test(s3.m), s3);
     await shot(p, "desktop-light-model-gesture", "Gesture + Model: badge 'Qwen3-0.6B (running in your browser)', note 'recipe and the colour of 4 of 30 marks: model; ...'", false);
     const lt1 = await p.eval("window.__lt");
+    await p.eval("document.getElementById('model-marks').click(); 1"); // off again: the later checks only need the recipe
     // the Map tab: before Paint the rules' map is shown and the badge says so
     await p.eval("document.getElementById('tab-map').click(); 1");
     await p.waitFor("document.getElementById('progress-label').textContent.startsWith('Finished')", 60000);
@@ -964,16 +974,17 @@ if (run("model")) {
       check(`T8 injection-like prompt keeps the fixed options ("${s.slice(0, 30)}...")`, ok && /^Recipe from the model: /.test(st.reading) && !/stopped/.test(st.notice), st.reading);
     }
     // Cancel while the model chooses a mark's colour: the painting stops there, nothing more is asked
+    await p.eval("document.getElementById('model-marks').click(); 1");
     const d0 = Number(await p.eval("document.body.dataset.done || 0"));
     await p.eval(`document.getElementById('prompt').value=${js("a lighthouse in a storm")}; document.getElementById('paint').click(); 1`);
     await p.waitFor("/choosing the colour of mark/.test(document.getElementById('progress-label').textContent)", 900000);
-    const cancelVisible = await p.eval("!document.getElementById('cancel-run').hidden");
+    const cancelVisible = await p.eval("!document.getElementById('cancel-run').hidden && !!document.getElementById('cancel-run').closest('.progress-row')");
     await p.eval("document.getElementById('cancel-run').click(); 1");
     const stepAt = await p.eval("document.getElementById('odds').dataset.step");
     await sleep(15000);
     const sc = { visible: cancelVisible, stepAt, stepLater: await p.eval("document.getElementById('odds').dataset.step"),
       label: await p.eval("document.getElementById('progress-label').textContent"), done: Number(await p.eval("document.body.dataset.done || 0")) };
-    check("T8 Cancel during a model mark: the button shows, the painting stops and does not finish", sc.visible && sc.stepLater === sc.stepAt && sc.label === "Cancelled" && sc.done === d0, sc);
+    check("T8 Cancel during a model mark: the button shows beside the progress bar, the painting stops and does not finish", sc.visible && sc.stepLater === sc.stepAt && sc.label === "Cancelled" && sc.done === d0, sc);
     const after = p.routed.slice(n0);
     const words = /sunflower|noon|ignore|pirate|hardcore|porn|SYSTEM/i;
     const hosts = [...new Set(after.map((r) => new URL(r.url).host))].map((h) => (url.includes(h) ? "(this page)" : h));

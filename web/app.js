@@ -31,7 +31,7 @@ const EXAMPLE = "a field of sunflowers at noon";
 
 const rules = new RuleDirector();
 // Model mode: nothing of the model (not even its loader) is fetched until the visitor presses "Download and enable model".
-const slot = new ModelSlot((opts) => import("./model-loader.js").then((m) => m.loadModel(opts)), { marks: true });
+const slot = new ModelSlot((opts) => import("./model-loader.js").then((m) => m.loadModel(opts))); // model marks: #model-marks
 const guard = new DisabledGuard();
 
 const EXPLAINER = {
@@ -122,6 +122,7 @@ function marksEstimate() {
 
 /** The model's map settings show only on the Probability map tab in Model mode; call after a tab or decider change. */
 function syncModeControls() {
+  $("model-marks-row").hidden = !slot.canUseModel() || app.tab !== "gesture";
   const modelMap = slot.mode === "model" && app.tab === "map";
   $("model-map-options").hidden = !modelMap;
   $("model-map-note").hidden = !modelMap;
@@ -503,7 +504,8 @@ async function startGesture({ example = false } = {}) {
   // rules', a link's, or one adjusted by hand) is painted by the rules alone, and the badge says so.
   if (director.kind === "model" && app.lookBy !== "model") {
     director = rules;
-    notice("This recipe was not chosen by the model, so the rules paint it. Press Paint to let the model choose the recipe.");
+    notice(app.example ? "The example is painted by the rules. Type a scene and press Paint to let the model choose."
+      : "This recipe was not chosen by the model, so the rules paint it. Press Paint to let the model choose the recipe.");
   }
   const opts = { prompt: app.prompt || "(a shared painting; no words)", look: app.look, seed: app.seed, budget: app.budget,
     skin: gestureStyle(), director, mode: app.pick, tick: () => sleep(0) };
@@ -1002,12 +1004,18 @@ async function loadModelClicked() {
   const state = await slot.start({ signal: loadAbort.signal, onProgress: ({ loaded, total }) => {
     $("model-progress").value = total ? loaded / total : 0;
     $("model-status").textContent = `Downloading the model: ${Math.round(loaded / 1e6)} of about ${Math.round(total / 1e6)} MB...`;
+  }, onSwitch: (i) => { // WebGPU failed after loading: the same model now answers on WebAssembly
+    slot.director?.resetTimings();
+    $("model-status").textContent = `${i.fallback[0].toUpperCase()}${i.fallback.slice(1)}. Model mode stays on.`;
+    updateEstimate();
+    showBadge(app.painted?.director || currentDirector(), app.painted || {});
   } });
   loadAbort = null;
   $("model-progress").hidden = true;
   $("cancel-load").hidden = true;
   if (state === "ready") {
     const i = slot.director.info;
+    slot.director.marks = $("model-marks").checked;
     btn.textContent = "Model enabled";
     $("decider-model").disabled = false;
     setRadio("decider", "model");
@@ -1310,6 +1318,11 @@ function wire() {
   $("again").addEventListener("click", askAgain);
   $("load-model").addEventListener("click", loadModelClicked);
   $("cancel-load").addEventListener("click", () => loadAbort?.abort());
+  $("model-marks").addEventListener("change", () => { // applies from the next Paint; the painting on screen keeps its badge
+    if (slot.director) slot.director.marks = $("model-marks").checked;
+    updateEstimate();
+    badgeForChoice();
+  });
   for (const el of document.querySelectorAll('input[name="decider"]')) {
     el.addEventListener("change", () => {
       setRadio("decider", slot.setMode(radioValue("decider")));

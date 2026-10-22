@@ -75,12 +75,14 @@
     in both orders and averages them, and no option may get more than 85%.</p>
   <ul>
     <li><strong>Gesture + Model</strong>: the model answers the six recipe questions once (mood, harmony, hue family,
-      value key, saturation, composition; about 40 seconds on WebAssembly). Then, while the painting grows, it chooses
-      the colour role of one or two marks in each phase after the background (4 of 30 marks), each time reading a short
-      summary of what is already on the canvas and the last two marks (about 50 seconds more on WebAssembly). The odds
-      cards of those marks are labelled "model"; every other choice follows the authored weights. The badge says
-      "recipe and the colour of 4 of 30 marks: model; everything else: authored weights". If the model fails during a
-      painting, the rules paint the rest of it and the badge says from which mark.</li>
+      value key, saturation, composition; about 40 seconds on WebAssembly). The marks then follow the authored weights,
+      and the badge says "recipe: model, marks: authored weights". Tick "Let the model choose the colour of a few marks
+      too" (off by default) and, while the painting grows, it also chooses the colour role of one or two marks in each
+      phase after the background (4 of 30 marks), each time reading a short summary of what is already on the canvas and
+      the last two marks. That adds about 50 seconds on WebAssembly, and its colours usually look worse than the rules'.
+      The odds cards of those marks are labelled "model", and the badge says "recipe and the colour of 4 of 30 marks:
+      model; everything else: authored weights". If the model fails during a painting, the rules paint the rest of it and
+      the badge says from which mark.</li>
     <li><strong>Probability map + Model</strong>: the model answers one colour question for each cell of a coarse grid
       (6x6 = 36 questions by default, about 6 minutes on a desktop CPU; or 4x4 or 8x8), with progress and Cancel. Its odds are interpolated smoothly to the
       full grid; "Blend with rules" mixes in the rules' map half and half. The badge says "Model on a 6x6 grid,

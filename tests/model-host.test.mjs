@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DTYPES, MODEL, PREFIX_CACHE, SMOKE, adapterName, friendly, isSoftware, logitsOK, planBackends, restAfter,
   webgpuFailure } from "../web/model-host.js";
-import { loadModel } from "../web/model-loader.js";
+import { SWITCHED, loadModel } from "../web/model-loader.js";
 
 const NVIDIA = { vendor: "nvidia", architecture: "ampere", description: "", fallback: false };
 const SWIFT = { vendor: "google", architecture: "swiftshader", description: "", fallback: true };
@@ -18,6 +18,15 @@ test("model-host: WebGPU is tried first only on a hardware adapter, and every pl
   assert.deepEqual(planBackends("webgpu", { gpu: true, adapter: SWIFT }).order, ["webgpu", "wasm"], "asked for: a software adapter too");
   assert.deepEqual(planBackends("wasm", { gpu: true, adapter: NVIDIA }), { order: ["wasm"], fallback: "" }, "not attempted: no reason");
   for (const plan of [planBackends(), planBackends("auto", { gpu: true, adapter: NVIDIA }), planBackends("webgpu", {})]) assert.equal(plan.order.at(-1), "wasm");
+});
+
+test("model-host: with storage blocked WebGPU is not tried, so a failed try never downloads the model twice", () => {
+  const blocked = planBackends("auto", { gpu: true, adapter: NVIDIA, storage: false });
+  assert.deepEqual(blocked.order, ["wasm"]);
+  assert.match(blocked.fallback, /not letting the page keep the model files/);
+  assert.deepEqual(planBackends("auto", { gpu: true, adapter: NVIDIA, storage: true }).order, ["webgpu", "wasm"]);
+  assert.deepEqual(planBackends("webgpu", { gpu: true, adapter: NVIDIA, storage: false }).order, ["webgpu", "wasm"], "asked for: tried anyway");
+  assert.equal(planBackends("auto", { gpu: false, storage: false }).fallback, "this browser has no WebGPU", "the first reason wins");
 });
 
 test("model-host: adapters are named plainly, software ones marked", () => {
@@ -130,6 +139,36 @@ test("loader: WebGPU that works is used, and the prefix is only sent when it sta
   assert.deepEqual(scores.map((m) => m.prefix), ["head\n", undefined, undefined]);
   assert.ok(scores.every((m) => m.text.length && m.n === 3));
   assert.deepEqual(r.stats, { reused: 1, full: 2 });
+});
+
+test("loader: a question that fails on WebGPU after loading moves the model to WebAssembly in place", async () => {
+  let gpuBroken = false;
+  const made = fakeWorkers((w, m, k) => {
+    if (m.type === "load") {
+      if (k === 1) return w.emit({ type: "ready", info: INFO("WebGPU", { adapter: "nvidia ampere" }) });
+      w.emit({ type: "progress", loaded: 1, total: 2, backend: "wasm" }); // from the cache: not shown as a download
+      return w.emit({ type: "ready", info: INFO("WASM", { fallback: m.fallback, adapter: m.adapter }) });
+    }
+    if (k === 1 && gpuBroken) return w.emit({ type: "error", id: m.id, message: "the model stopped while answering" });
+    w.emit({ type: "scores", id: m.id, scores: [k, 0], reused: false });
+  });
+  const seen = [], switched = [];
+  const r = await loadModel({ onProgress: (p) => seen.push(p), onSwitch: (i) => switched.push({ ...i }) });
+  assert.deepEqual(await r.scorer("q", 2), [1, 0]);
+  const before = seen.length;
+  gpuBroken = true;
+  await assert.rejects(r.scorer("q", 2), /the model stopped while answering/, "that question fails: the director falls back for it");
+  const later = r.scorer("q", 2); // asked while WebAssembly starts: waits for it
+  assert.deepEqual(await later, [2, 0]);
+  assert.equal(made.length, 2);
+  assert.ok(made[0].terminated && !made[1].terminated);
+  assert.deepEqual(made[1].posted[0], { type: "load", prefer: "wasm", prefixCache: false, fallback: SWITCHED, adapter: "nvidia ampere" });
+  assert.equal(r.info.backend, "WASM", "the info the page shows is updated in place");
+  assert.equal(r.info.fallback, SWITCHED);
+  assert.equal(switched.length, 1);
+  assert.equal(seen.length, before, "no download progress after the model is ready");
+  r.terminate();
+  await assert.rejects(r.scorer("q", 2), /unloaded/);
 });
 
 test("loader: cancelling during either attempt stops everything with 'loading was cancelled'", async () => {

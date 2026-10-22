@@ -14,10 +14,11 @@ export const MODEL = {
   dtype: "int8", // 8-bit weights: 4-bit builds changed the top picks too often in our tests
   mb: 650, // model file + tokenizer + runtime, in MB of 10^6 bytes
 };
-// the weights per backend: the same file on both, so one download serves both and a fallback downloads nothing again.
+// the weights per backend: the same file on both, so one download serves both and a fallback reads them from the Cache
+// API instead of downloading them again (with storage blocked WebGPU is not tried, see planBackends).
 // On WebGPU this runtime has no kernels for the int8 layers (MatMulInteger, DynamicQuantizeLinear: 308 of the graph's
 // nodes), so those still run on the CPU and the GPU takes the rest (attention, norms, the output layer). Measured on an
-// RTX 3080 Ti laptop GPU (tests/webgpu-bench.mjs): a 412-token prompt 5.2 s instead of 17.7 s, a 75-token one 1.3 s
+// RTX 3080 Ti laptop GPU (tests/webgpu-bench.mjs): a 412-token prompt 5.2 s instead of 17.7 s, a 75-token one 1.4 s
 // instead of 1.9 s. The answers are not identical: on near-ties the top letter can differ from WebAssembly's.
 export const DTYPES = { webgpu: MODEL.dtype, wasm: MODEL.dtype };
 // Reusing a prefix's key/value cache is off unless asked for: the int8 build quantises its activations per forward pass
@@ -44,14 +45,16 @@ export function isSoftware(a) {
 /**
  * Which backends to try, in order, and the plain reason WebGPU is skipped ("" when it is tried or not wanted).
  * prefer: "auto" | "webgpu" | "wasm". probe: what the worker found, { gpu: navigator.gpu exists, adapter: null |
- * { vendor, architecture, description, fallback }, error?: string }. "webgpu" also tries a software adapter; every
- * plan ends with WebAssembly, so a WebGPU failure never leaves the visitor without the model.
+ * { vendor, architecture, description, fallback }, storage: the Cache API works, error?: string }. "webgpu" also tries
+ * a software adapter and blocked storage; every plan ends with WebAssembly, so a WebGPU failure never leaves the visitor
+ * without the model. "auto" skips WebGPU when storage is blocked: a failed try would download the model a second time.
  */
 export function planBackends(prefer = "auto", probe = {}) {
   if (prefer === "wasm") return { order: ["wasm"], fallback: "" };
   if (!probe.gpu) return { order: ["wasm"], fallback: "this browser has no WebGPU" };
   if (!probe.adapter) return { order: ["wasm"], fallback: "WebGPU found no graphics adapter" };
   if (isSoftware(probe.adapter) && prefer !== "webgpu") return { order: ["wasm"], fallback: "WebGPU here runs in software, which is slower than WebAssembly" };
+  if (probe.storage === false && prefer !== "webgpu") return { order: ["wasm"], fallback: "this browser is not letting the page keep the model files, and a failed WebGPU try would download them twice" };
   return { order: ["webgpu", "wasm"], fallback: "" };
 }
 

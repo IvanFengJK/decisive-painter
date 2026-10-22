@@ -80,7 +80,7 @@ async function load({ prefer = "auto", prefixCache = PREFIX_CACHE, fallback = ""
   reuse = !!prefixCache;
   const cache = await storageWorks();
   await library(cache);
-  const probe = prefer === "wasm" ? null : await probeWebGPU();
+  const probe = prefer === "wasm" ? null : { ...(await probeWebGPU()), storage: cache };
   const plan = probe ? planBackends(prefer, probe) : { order: ["wasm"], fallback };
   const name = probe ? adapterName(probe.adapter) : adapter;
   stage = plan.order[0];

@@ -7,22 +7,30 @@ import { MODEL, PREFIX_CACHE } from "./model-host.js";
 
 export { MODEL };
 
+/** info.fallback after a question failed on WebGPU and the model moved to WebAssembly. */
+export const SWITCHED = "WebGPU stopped working after the model loaded, so it moved to WebAssembly";
+
 /**
  * Load the model in a Worker; onProgress({ loaded, total, backend }) in bytes, never going backwards; `signal`
  * (AbortSignal) cancels the download; prefer: "auto" (WebGPU when it works here, else WebAssembly) | "webgpu" (also a
  * software adapter) | "wasm". A failed WebGPU attempt is thrown away with its worker and WebAssembly loads in a fresh one,
- * from the Cache API when it works (so nothing is downloaded twice). Resolves to { scorer, info, terminate, stats }:
+ * from the Cache API (WebGPU is not tried when storage is blocked, so nothing is downloaded twice). If a question fails on
+ * WebGPU after loading (a lost device, say), that question fails, the worker is replaced by a WebAssembly one and later
+ * questions wait for it; `info` is updated in place and onSwitch(info) is called once it is ready.
+ * Resolves to { scorer, info, terminate, stats }:
  * scorer(text, n, { prefix }) -> Promise<number[n]>, the letter logits of the whole prompt `text`; `prefix`, a start of
  * `text` shared by many calls, is ignored unless prefixCache is on, when the worker reuses its key/value cache (stats
  * counts how often it could; see PREFIX_CACHE for why it is off by default).
  * info: { name, dtype, backend: "WebGPU" | "WASM", mb, loadSeconds, cached, prefixCache, fallback?, adapter? }.
  */
-export function loadModel({ onProgress = () => {}, signal, prefer = "auto", prefixCache = PREFIX_CACHE } = {}) {
+export function loadModel({ onProgress = () => {}, onSwitch = () => {}, signal, prefer = "auto", prefixCache = PREFIX_CACHE } = {}) {
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
     const pending = new Map();
     const stats = { reused: 0, full: 0 };
     let worker = null, next = 0, ready = false, done = false, best = { loaded: 0, total: 0 };
+    let info = null, switching = false, waiting = []; // waiting: questions asked while a WebAssembly worker replaces WebGPU
+    const send = (q) => worker.postMessage({ type: "score", ...q });
     const fail = (message) => {
       done = true;
       worker?.terminate();
@@ -50,11 +58,18 @@ export function loadModel({ onProgress = () => {}, signal, prefer = "auto", pref
         if (done && !ready) return;
         const m = ev.data || {};
         if (m.type === "progress") {
+          if (ready) return; // a replacement worker reads the files from the cache; the page's download is done
           best = { loaded: Math.min(Math.max(best.loaded, m.loaded), Math.max(best.total, m.total)), total: Math.max(best.total, m.total) };
           onProgress({ ...best, backend: m.backend });
         } else if (m.type === "fallback") { // WebGPU did not work: drop that worker and its memory, load WebAssembly anew
           worker.terminate();
           start({ type: "load", prefer: "wasm", prefixCache, fallback: m.reason, adapter: m.adapter });
+        } else if (m.type === "ready" && ready) { // the WebAssembly worker that replaced a failed WebGPU one
+          Object.assign(info, { backend: m.info.backend, dtype: m.info.dtype, fallback: SWITCHED });
+          switching = false;
+          for (const q of waiting) send(q);
+          waiting = [];
+          onSwitch(info);
         } else if (m.type === "ready") {
           ready = true;
           const scorer = (text, n, opts = {}) => new Promise((res, rej) => {
@@ -65,9 +80,10 @@ export function loadModel({ onProgress = () => {}, signal, prefer = "auto", pref
             const id = ++next;
             pending.set(id, { resolve: res, reject: rej });
             const prefix = typeof opts?.prefix === "string" && opts.prefix && text.startsWith(opts.prefix) ? opts.prefix : undefined;
-            worker.postMessage({ type: "score", id, text, n, prefix });
+            if (switching) waiting.push({ id, text, n, prefix });
+            else send({ id, text, n, prefix });
           });
-          const info = { ...m.info, loadSeconds: Math.round((performance.now() - t0) / 100) / 10,
+          info = { ...m.info, loadSeconds: Math.round((performance.now() - t0) / 100) / 10,
             mb: Math.max(m.info.mb || 0, Math.round(best.total / 1e6)) };
           resolve({ scorer, info, terminate: () => fail("the model was unloaded"), stats });
         } else if (m.type === "scores" || (m.type === "error" && m.id)) {
@@ -77,7 +93,16 @@ export function loadModel({ onProgress = () => {}, signal, prefer = "auto", pref
           if (m.type === "scores") {
             stats[m.reused ? "reused" : "full"]++;
             p.resolve(m.scores);
-          } else p.reject(new DirectorError(String(m.message)));
+          } else {
+            p.reject(new DirectorError(String(m.message)));
+            if (info.backend === "WebGPU" && !switching) { // the GPU path broke after loading: carry on with WebAssembly
+              switching = true;
+              worker.terminate();
+              for (const q of pending.values()) q.reject(new DirectorError("the model stopped while answering"));
+              pending.clear();
+              start({ type: "load", prefer: "wasm", prefixCache, fallback: SWITCHED, adapter: info.adapter || "" });
+            }
+          }
         } else if (m.type === "error") fail(String(m.message));
       };
       worker.postMessage(msg);

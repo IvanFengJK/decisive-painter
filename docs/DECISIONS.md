@@ -116,12 +116,14 @@ paths point to the files here, and two entries about the research repository and
   note and keep their v=1 link.
 - **V3 Model mode is int8 in a Worker, on WebGPU when it works, else WebAssembly.** No 4-bit build (it changed top
   picks a lot). WebGPU is kept only with a hardware adapter and a passing test question; any failure restarts on
-  WebAssembly. WebGPU stays the default although it can answer near-ties differently from WebAssembly (3 of 6 test
+  WebAssembly, and so does a question that fails on WebGPU after loading. Not tried with storage blocked (a failed try
+  would download the model twice). WebGPU stays the default although it can answer near-ties differently from WebAssembly (3 of 6 test
   prompts): about 3.4x faster on long prompts, and links never carry model output. The Worker keeps the page
   responsive while the model reads.
-- **V4 What the model decides.** Gesture: the six recipe questions, then the colour role of 4 of 30 marks (one or two
-  per phase after the backdrop, which is painted on bare paper and has nothing to read), about 50 s more on
-  WebAssembly; everything else follows the authored weights. Colour because it depends most on what is already
+- **V4 What the model decides.** Gesture: the six recipe questions; opt-in (a checkbox, off by default), also the
+  colour role of 4 of 30 marks (one or two per phase after the backdrop, which is painted on bare paper and has nothing
+  to read), about 50 s more on WebAssembly; everything else follows the authored weights. Opt-in because it is slower
+  and its colours looked worse than the rules' (it almost never picks dominant). Colour because it depends most on what is already
   painted and has six options; gesture and place can have more than the eight answer letters. Map: one
   colour question per cell of a coarse grid (4x4, 6x6 or 8x8), interpolated bilinearly to the full grid, optionally
   blended 50/50 with the rules; the Map tab's recipe comes from the rules' reading. Every question of
@@ -141,7 +143,8 @@ paths point to the files here, and two entries about the research repository and
   automatic seed, unpaced (about 1.4 s), so typing it and pressing Paint gives the same pixels. It writes no link into
   the address bar and sets its own `dataset.example` marker. A painting link shows its own painting and never the
   example; a damaged link shows its notice and the example. The canvas is at the top, with the tabs, scene box, Paint
-  and seed right under it; on phones Pause and Next mark sit below the first screen so Paint stays on it.
+  and seed right under it; on phones Pause and Next mark sit below the first screen so Paint stays on it. Cancel sits
+  in the progress row under the painting, so it is on the first screen while the model works.
 - **V11 Link preview.** Open Graph and Twitter-card tags with the verified production URL `https://kev-paint.vercel.app/`
   (the Vercel project serving `web/`) and `og-image.jpg`, 1200x630: JPEG because the PNG of the paper texture was
   530 KB.

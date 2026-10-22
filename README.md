@@ -28,10 +28,11 @@ the painting on screen:
 - **Model** (after the visitor presses Download and enable model): **Qwen3-0.6B**, int8, about 650 MB, running in a Worker in
   the tab, on WebGPU when the graphics card can run it and on WebAssembly otherwise; nothing is sent to a server. The
   page says which backend it used and, when it is WebAssembly, why WebGPU was not. Badge: "Decision-maker: Qwen3-0.6B
-  (running in your browser)" plus what it decides: on Gesture "recipe and the colour of 4 of 30 marks: model;
-  everything else: authored weights" (the six recipe questions, then the colour role of one or two marks in each phase
-  after the backdrop, each time reading a short summary of the painting so far; the odds cards of those marks are
-  labelled "model"); on the map "Model on a 6x6 grid, interpolated" (one colour question per coarse cell, interpolated to the full grid;
+  (running in your browser)" plus what it decides: on Gesture "recipe: model, marks: authored weights" (the six recipe
+  questions). With "Let the model choose the colour of a few marks too" ticked (off by default), it also chooses the
+  colour role of one or two marks in each phase after the backdrop, each time reading a short summary of the painting
+  so far. The odds cards of those marks are then labelled "model" and the badge says "recipe and the colour of 4 of 30
+  marks: model; everything else: authored weights". On the map "Model on a 6x6 grid, interpolated" (one colour question per coarse cell, interpolated to the full grid;
   4x4 and 8x8 too; optionally "..., blended with rules").
 
 ## Run it locally
@@ -158,12 +159,16 @@ never reaches the model.
 - Model mode is a general 0.6B model scoring options, not a trained decision model. Earlier tests found small models
   drift towards austere, mid-value, near-monochrome palettes, and a no-model control beat a 0.6B model; expect the rules
   to look better. Per-cell colour is the hardest job for it: maps from the model are rough.
-- Model mode is slow on WebAssembly: about 40 s for the recipe, about 50 s more for the mark colours and several
-  minutes for a 6x6 map on a desktop CPU. Only the int8 build is used; 4-bit builds changed the top picks too often.
+- Model mode is slow on WebAssembly: about 40 s for the recipe, about 50 s more with the mark colours ticked and
+  several minutes for a 6x6 map on a desktop CPU. The model's mark colours usually look worse than the rules' (it almost
+  never picks the dominant colour), which is why they are opt-in. Cancel stops between questions: the question the
+  model is reading still finishes in its worker (up to about 6 s on WebAssembly), and the next painting waits for it. Only the int8 build is used; 4-bit builds changed the top picks too often.
 - WebGPU helps less than it could: the WebGPU runtime has no kernels for the int8 build's quantised matrix products, so
   those still run on the CPU. Measured on one laptop (RTX 3080 Ti, Windows Chrome), a 412-token prompt took 5.2 s on
   WebGPU against 17.7 s on WebAssembly, and a 75-token recipe question 1.4 s against 1.9 s; loading took about 1.7 s
-  longer (the test question). Other GPUs are not measured. Headless Chromium under WSL2 only offers a software adapter,
+  longer (the test question). Other GPUs are not measured. With storage blocked (some private windows) WebGPU is not
+  tried, because a failed try would download the model a second time. If WebGPU fails after loading, that question
+  fails (the rules take over for the painting) and the model moves to WebAssembly for the next one. Headless Chromium under WSL2 only offers a software adapter,
   which the page does not use, so the browser tests exercise the WebAssembly fallback.
 - WebGPU and WebAssembly can answer near-ties differently (a different top option on 3 of 6 test prompts), so the same
   words and seed can give another recipe on another device. Share links never carry model output, so links are not

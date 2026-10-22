@@ -45,6 +45,7 @@
     <div class="progress-row">
       <progress id="progress" max="30" value="0" aria-labelledby="progress-label"></progress>
       <p id="progress-label" class="progress-label">Ready</p>
+      <button type="button" id="cancel-run" hidden>Cancel</button>
     </div>
     <p id="example-note" class="example-note" hidden></p>
     <p id="map-help" class="help map-help" hidden>Hover or tap a cell to see its odds. With the keyboard: focus the painting, then use the arrow keys; Escape hides the odds.</p>
@@ -75,7 +76,6 @@
     <div class="transport" role="group" aria-label="Playback">
       <button type="button" id="pause" disabled>Pause</button>
       <button type="button" id="step" disabled>Next mark</button>
-      <button type="button" id="cancel-run" hidden>Cancel</button>
       <button type="button" id="replay" disabled>Replay</button>
       <button type="button" id="again" disabled aria-describedby="again-help">Ask it again</button>
       <button type="button" id="download" disabled>Download PNG</button>
@@ -107,6 +107,10 @@
       </div>
       <progress id="model-progress" max="1" value="0" hidden aria-label="Model download"></progress>
       <p id="model-status" class="help" role="status" aria-live="polite"></p>
+      <div id="model-marks-row" class="check-row" hidden>
+        <input type="checkbox" id="model-marks" aria-describedby="model-marks-help"><label for="model-marks">Let the model choose the colour of a few marks too</label>
+        <p id="model-marks-help" class="help">Gesture only, off by default. The model reads the painting so far and picks the colour role of about 4 marks in 30. It adds about 50 s per painting on WebAssembly, and its colours usually look worse than the rules'.</p>
+      </div>
       <p id="model-help" class="help">Select “Download and enable model” to start a one-time download of about 650 MB. Model turns on automatically when ready; your prompt stays on this device. A model-made Probability map can take several minutes.</p>
     </fieldset>
     <details id="advanced" class="panel">
