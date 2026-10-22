@@ -27,7 +27,7 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const PACE_MS = 90; // pause between marks so the painting can be watched (0 with reduced motion)
 
 const rules = new RuleDirector();
-// Model mode: nothing of the model (not even its loader) is fetched until the visitor presses "Load model".
+// Model mode: nothing of the model (not even its loader) is fetched until the visitor presses "Download and enable model".
 const slot = new ModelSlot((opts) => import("./model-loader.js").then((m) => m.loadModel(opts)));
 const guard = new DisabledGuard();
 
@@ -107,6 +107,13 @@ function updateEstimate() {
   $("map-estimate").textContent = slot.mode === "model"
     ? `Model mode: ${n} questions on a ${app.coarse}x${app.coarse} grid, about ${fmtMin(n * (slot.director?.msPerQuestion || 10000))} on this device.`
     : `The rules fill every cell at once (about ${Math.max(1, Math.round(app.mapMs[app.style.map] / 1000))} s with this style).`;
+}
+
+/** The model's map settings show only on the Probability map tab in Model mode; call after a tab or decider change. */
+function syncModeControls() {
+  const modelMap = slot.mode === "model" && app.tab === "map";
+  $("model-map-options").hidden = !modelMap;
+  $("model-map-note").hidden = !modelMap;
 }
 
 // ------------------------------------------------------------------------------------------------ accent colour
@@ -741,6 +748,7 @@ async function renderMapThumbs() {
 function showStyles() {
   setRadio("style-gesture", app.legacy ? "" : app.style.gesture);
   setRadio("style-map", app.style.map);
+  $("pixel-options").hidden = app.style.map !== "pixel";
   $("legacy-note").hidden = !app.legacy;
   $("legacy-note").textContent = app.legacy
     ? "This old link uses the retired Paint look (the old Brush media), drawn exactly as before. Pick a style to redraw it." : "";
@@ -766,6 +774,7 @@ function setTab(tab, { paint = true } = {}) {
   $("map-help").hidden = !m;
   $("pause").hidden = m;
   $("step").hidden = m;
+  $("advanced").hidden = m;
   $("again-help").textContent = m
     ? "Ask it again: the same words and odds with a new seed. The variety comes from the seeded draws."
     : "Ask it again: the same words with a new seed. The variety comes from picking by the odds.";
@@ -781,6 +790,7 @@ function setTab(tab, { paint = true } = {}) {
   blankThumbs();
   setRunning(false);
   updateEstimate();
+  syncModeControls();
   if (changed) {
     app.painted = null;
     badgeForChoice();
@@ -903,6 +913,7 @@ function readSeed(text) {
   if (raw === "") {
     app.seed = seedFor(text);
     app.seedFromText = true;
+    $("seed").placeholder = `Auto (${app.seed})`; // shows the seed used while the field stays blank, so it stays automatic
     return;
   }
   const v = clampInt(raw.replace(/\D/g, ""), 0, SEED_MAX, 0);
@@ -918,6 +929,7 @@ let loadAbort = null;
 async function loadModelClicked() {
   const btn = $("load-model");
   btn.disabled = true;
+  btn.textContent = "Downloading model…";
   $("cancel-load").hidden = false;
   $("model-progress").hidden = false;
   $("model-progress").value = 0;
@@ -933,7 +945,7 @@ async function loadModelClicked() {
   $("cancel-load").hidden = true;
   if (state === "ready") {
     const i = slot.director.info;
-    btn.textContent = "Model loaded";
+    btn.textContent = "Model enabled";
     $("decider-model").disabled = false;
     setRadio("decider", "model");
     $("model-status").textContent = `Loaded ${i.name} (${i.dtype}, ${i.mb} MB, ${i.backend}) in ${i.loadSeconds} s${i.cached ? "; kept in this browser's cache" : ""}. Model mode is on.`;
@@ -941,7 +953,7 @@ async function loadModelClicked() {
     afterDeciderChange();
   } else {
     btn.disabled = false;
-    btn.textContent = "Try loading the model again (about 650 MB)";
+    btn.textContent = "Retry download and enable model (~650 MB)";
     setRadio("decider", "rules");
     $("model-status").textContent = `Model mode is not available: ${slot.error}. The rules stay on.`;
     if (app.painted) showBadge(app.painted.director, app.painted);
@@ -952,6 +964,7 @@ async function loadModelClicked() {
 /** After Rules <-> Model: Gesture re-reads the words (the recipe changes); Map waits for Paint before asking the model. */
 function afterDeciderChange() {
   updateEstimate();
+  syncModeControls();
   if (!$("prompt").value.trim() || !app.look) {
     app.painted = null;
     badgeForChoice();
@@ -1129,6 +1142,7 @@ function openRecipe(r, from = "link") {
     ? "A saved painting: the recipe, seed and settings are stored, not the words. Drawn with the rules."
     : "A shared painting: the link carries the recipe, seed and settings, not the words. Drawn with the rules; load the model to let it decide.");
   updateEstimate();
+  syncModeControls();
   if (app.tab !== r.tab) setTab(r.tab, { paint: false });
   repaint();
 }
@@ -1149,6 +1163,14 @@ function openFromHash() {
 // ------------------------------------------------------------------------------------------------ wiring
 function wire() {
   $("prompt-form").addEventListener("submit", onPaint);
+  $("seed").addEventListener("input", () => { $("seed").placeholder = "Auto"; }); // the last auto seed is stale once edited
+  for (const button of document.querySelectorAll("[data-example]")) {
+    button.addEventListener("click", () => {
+      $("prompt").value = button.dataset.example;
+      app.lastStart = -Infinity; // a chosen example always paints; the look ticket drops any paint it replaces
+      onPaint();
+    });
+  }
   const tabs = ["tab-gesture", "tab-map"];
   $("tab-gesture").addEventListener("click", () => setTab("gesture"));
   $("tab-map").addEventListener("click", () => setTab("map"));

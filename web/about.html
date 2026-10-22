@@ -54,7 +54,7 @@
     from an open model's recorded paintings, see Licences) choose the marks; on the map, region tables over the
     composition's places, soft edges, a light-to-dark gradient, seeded smooth noise and a subject blob give every cell
     its odds.</p>
-  <p><strong>Model (optional)</strong>: press <strong>Load model</strong> to download Qwen3-0.6B (a general small language
+  <p><strong>Model (optional)</strong>: press <strong>Download and enable model</strong> to download Qwen3-0.6B (a general small language
     model, int8, about 650 MB, Apache-2.0) and run it inside this tab, in a background worker on WebAssembly. Nothing is
     downloaded before you press it, and your words are never sent to a server. It is not a trained decision model: it
     scores the lettered options of each question from its next-word probabilities, asks each question with the options
@@ -91,7 +91,7 @@
   <ul>
     <li>It stays in this page. With the rules, the page makes no network requests while painting: no analytics, no
       cookies, no fonts or scripts from other sites. In Model mode the only requests are the model and its runtime
-      (huggingface.co and its file CDN, and cdn.jsdelivr.net), and only after you press Load model.</li>
+      (huggingface.co and its file CDN, and cdn.jsdelivr.net), and only after you press Download and enable model.</li>
     <li>Every text first goes through input guardrails, before any decision-maker sees it:
       <ul>
         <li>clean-up: at most 80 characters, invisible and direction-changing characters removed, code and markup refused;</li>

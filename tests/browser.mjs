@@ -146,8 +146,8 @@ if (run("t1")) {
       check(`T1 ${tag}: Gesture explainer`, top.ex.trim() === "The decision-maker picks one mark at a time from menus, with odds for every choice. Code draws the marks.", top.ex);
       check(`T1 ${tag}: badge says Rules and no model before anything is loaded`, b0.d === RULES && b0.n === "" && b0.m === "Model: none loaded", b0);
       check(`T1 ${tag}: Be the art director is gone`, !top.director && !/Be the (art )?director/i.test(top.body));
-      check(`T1 ${tag}: Rules | Model toggle with Rules on and Model disabled until loaded`, await p.eval("document.getElementById('decider-rules').checked && document.getElementById('decider-model').disabled && document.getElementById('load-model').textContent === 'Load model, about 650 MB, runs in your browser, nothing is sent to a server'"));
-      await shot(p, `${tag}-start`, "the empty page: name, tagline, Gesture explainer, Rules badge, Rules | Model toggle with the Load model button");
+      check(`T1 ${tag}: Rules | Model toggle with Rules on and Model disabled until loaded`, await p.eval("document.getElementById('decider-rules').checked && document.getElementById('decider-model').disabled && document.getElementById('load-model').textContent === 'Download and enable model (~650 MB)'"));
+      await shot(p, `${tag}-start`, "the empty page: name, tagline, Gesture explainer, Rules badge, Rules | Model toggle with the Download and enable model button");
       await paint(p, "a lighthouse in a storm");
       const oc = await p.eval("({ step: document.getElementById('odds').dataset.step, cards: document.querySelectorAll('.odds-card').length })");
       check(`T1 ${tag}: odds panel shows the last mark's 7 questions`, oc.step === "30" && oc.cards === 7, oc);
@@ -677,7 +677,7 @@ if (run("model")) {
       await loaded(p);
       const s1 = await state(p);
       check("T8 a blocked download gives a readable message and falls back to Rules", /^Model mode is not available: .+\. The rules stay on\.$/.test(s1.status)
-        && s1.decider === "rules" && s1.modelDisabled && s1.d === RULES && /Try loading/.test(s1.btn), s1.status);
+        && s1.decider === "rules" && s1.modelDisabled && s1.d === RULES && /^Retry download/.test(s1.btn), s1.status);
       await paint(p, "a red barn on a hill");
       const c = await canvasInfo(p);
       check("T8 after a failed load the rules still paint", c.painted > 0.05 && c.colours >= 3 && (await badge(p)).d === RULES, `${c.colours} colours`);
@@ -710,7 +710,7 @@ if (run("model")) {
     await loaded(p);
     const loadMs = Date.now() - t0;
     const s2 = await state(p);
-    check("T8 Load model loads it (int8, WASM) and switches to Model", /^Loaded Qwen3-0\.6B \(int8, \d+ MB, WASM\)/.test(s2.status) && s2.decider === "model" && !s2.modelDisabled, s2.status);
+    check("T8 Download and enable model loads it (int8, WASM) and switches to Model", /^Loaded Qwen3-0\.6B \(int8, \d+ MB, WASM\)/.test(s2.status) && s2.decider === "model" && !s2.modelDisabled, s2.status);
     await shot(p, "desktop-light-model-loaded", "the Rules | Model toggle after loading: Model on, the model slot names Qwen3-0.6B", false);
     const PROMPT = "a field of sunflowers at noon";
     const gMs = await paint(p, PROMPT, 900000);

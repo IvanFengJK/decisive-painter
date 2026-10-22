@@ -7,7 +7,7 @@ or ported from our own earlier rounds (the Round 12 renderer and lists, the Roun
 Round 15 palette engine). Licence: the repository's licence (see `LICENSE` at the repository root).
 
 No third-party code, fonts, images or scripts are included or loaded, except Model mode's vendored library below, which is
-loaded only after the visitor presses Load model.
+loaded only after the visitor presses Download and enable model.
 
 ## Numbers computed from model outputs
 
@@ -19,7 +19,7 @@ loaded only after the visitor presses Load model.
 - No other model's outputs are used. In particular, the Round 14 phase prior and the Round 15 role tables (which were
   informed by another service's cached decisions) are **not** used anywhere in the site.
 
-## Model mode (loaded only after the visitor presses Load model)
+## Model mode (loaded only after the visitor presses Download and enable model)
 
 - **transformers.js 4.3.1** (`@huggingface/transformers`, Apache License 2.0) is vendored as
   `vendor/transformers-4.3.1.min.js` (unchanged release file, SHA-256 `8d6716d9…e743`), with its licence in

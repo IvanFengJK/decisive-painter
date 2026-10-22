@@ -32,3 +32,6 @@ Thumbs.db
 # research material never belongs in this repository
 legacy/
 experiments/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

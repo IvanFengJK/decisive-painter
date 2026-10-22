@@ -1,4 +1,4 @@
-// The exact files Model mode downloads after "Load model" on the WASM path, with their SHA-256. The browser tests can
+// The exact files Model mode downloads after "Download and enable model" on the WASM path, with their SHA-256. The browser tests can
 // serve them from a local mirror (MODEL_MIRROR=<dir>) so each run does not download 630 MB again; make the mirror with
 //   node tests/model-files.mjs <dir>
 import { createHash } from "node:crypto";

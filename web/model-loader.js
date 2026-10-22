@@ -1,4 +1,4 @@
-// Model mode's loader, on the page's side: runs only after the visitor presses "Load model". It starts a module Worker
+// Model mode's loader, on the page's side: runs only after the visitor presses "Download and enable model". It starts a module Worker
 // (model-worker.js) that downloads and runs Qwen3-0.6B, and returns a scorer that sends one prompt at a time to it.
 // Nothing here is imported or fetched before that click. The visitor's words only go into the model in this tab: every
 // request is a library or model file.
