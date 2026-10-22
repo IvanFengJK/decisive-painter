@@ -7,6 +7,25 @@ makes pixels: it answers typed multiple-choice questions with a probability for 
 answers. Everything runs in the visitor's browser; the site is plain HTML, CSS and ES modules with no build step, no
 analytics and no cookies. It is a hobby project for learning how decision-model inference on the edge can drive art.
 
+## In short
+
+Decisive Painter is a browser-based art experiment inspired by Jev-style decision models: a decision-maker answers
+structured questions with probabilities, and ordinary code turns those choices into pixels. No diffusion model
+generates the image.
+
+- **Gesture** (the main view) builds the painting one mark at a time: the decision-maker reads the scene, chooses a
+  recipe, then chooses each mark, and you can inspect the odds for every choice as it works. **Probability map** (the
+  second tab) gives colour odds for every cell of a grid at once; the painting is those odds, drawn.
+- **Rules** (the default) uses authored decision tables and paints instantly. **Model** is optional: only after you
+  press the download button, Qwen3-0.6B (about 650 MB) runs locally in your browser, on WebGPU when available with a
+  WebAssembly fallback, and chooses the recipe (and, if you opt in, the colour of a few marks). Your prompt never
+  leaves your device.
+- Everything renders locally. Share links carry only the recipe, seed and settings, never your words or model output.
+- The model never generates pixels directly: it only answers the questions, and the same deterministic renderer draws
+  the answers either way.
+- The current implementation demonstrates the shape of a Jev-style decision interface; it is not itself a live Jev
+  integration, and the Qwen model is not Jev.
+
 Two tabs are two ways to draw with a decision-maker, each with its own styles:
 
 - **Gesture**: the decision-maker picks one mark at a time from menus (gesture, place, size, medium, colour role, fill,

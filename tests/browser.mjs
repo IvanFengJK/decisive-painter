@@ -236,24 +236,24 @@ if (run("t0")) {
     check(`T0 ${name} is not a painting: the example is painted${hash === "#prompt" ? "" : " under the link's notice, and the bad link is removed"}`, ok, st);
     await p.close();
   }
-  // layout: the painting at the top, then the tabs, the scene box, Paint and the seed, all on the first screen
+  // layout: the painting at the top, then the short explanation, the tabs, the scene box and Paint, all on the first screen
   for (const [name, vp] of [["390x844", { width: 390, height: 844, mobile: true }], ["370x822", VIEWS.phone], ["320x640", { width: 320, height: 640, mobile: true }], ["1280x800", VIEWS.desktop]]) {
     for (const theme of ["light", "dark"]) {
       const p = await browser.newPage({ ...vp, dark: theme === "dark" });
       await p.goto(url);
       await exampleShown(p);
       const L = await p.eval(`(() => { const r = (id) => { const b = document.getElementById(id).getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: Math.round(b.height), w: Math.round(b.width) }; };
-        return { y: scrollY, ih: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth, canvas: r('canvas'), tabs: r('tab-gesture'), map: r('tab-map'), prompt: r('prompt'),
-          paint: r('paint'), seed: r('seed'), explainer: r('explainer'), badge: r('badge-decider') }; })()`);
-      const first = ["canvas", "tabs", "prompt", "paint"].every((k) => L[k].top >= 0 && L[k].bottom <= L.ih) && L.seed.top < L.ih;
-      const order = L.canvas.bottom <= L.tabs.top && L.tabs.bottom <= L.prompt.top && L.prompt.bottom <= L.seed.top && L.seed.bottom <= L.explainer.top && L.explainer.top <= L.badge.top;
-      const targets = ["tabs", "map", "prompt", "paint", "seed"].every((k) => L[k].h >= 44);
+        return { y: scrollY, ih: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth, canvas: r('canvas'), core: r('core-note'), tabs: r('tab-gesture'), map: r('tab-map'), prompt: r('prompt'),
+          paint: r('paint'), controls: r('controls'), explainer: r('explainer'), badge: r('badge-decider') }; })()`);
+      const first = ["canvas", "tabs", "prompt", "paint"].every((k) => L[k].top >= 0 && L[k].bottom <= L.ih) && L.core.top < L.ih;
+      const order = L.canvas.bottom <= L.tabs.top && L.tabs.bottom <= L.prompt.top && L.prompt.bottom <= L.core.top && L.core.bottom <= L.controls.top && L.controls.bottom <= L.explainer.top && L.explainer.top <= L.badge.top;
+      const targets = ["tabs", "map", "prompt", "paint"].every((k) => L[k].h >= 44) && L.controls.h >= 44;
       results.t0[`layout_${name}_${theme}`] = L;
-      check(`T0 layout ${name} ${theme}: the painting is at the top (top ${L.canvas.top} px) and the tabs, scene box and Paint are on the first screen without scrolling`, L.y === 0 && L.canvas.top < 120 && first,
-        `canvas ${L.canvas.top}-${L.canvas.bottom}, tabs ${L.tabs.top}, prompt and Paint ${L.paint.top}-${L.paint.bottom}, seed ${L.seed.top}, viewport ${L.ih}`);
-      check(`T0 layout ${name} ${theme}: visual order painting, tabs, scene box, seed, then explainer and badge; tap targets at least 44 px; no horizontal scroll`, order && targets && L.sw <= L.iw, L);
-      if (name !== "1280x800") await shot(p, `first-${name}-${theme}`, `first load at ${name} (${theme}): the example painting, then the tabs, the scene box with Paint and the seed`, false);
-      else await shot(p, `first-desktop-${theme}`, `first load on a desktop (${theme}): the example painting with the tabs, scene box and Paint under it; odds and settings on the right`, false);
+      check(`T0 layout ${name} ${theme}: the painting is at the top (top ${L.canvas.top} px) and the tabs, scene box and Paint are on the first screen without scrolling, the short explanation right under them`, L.y === 0 && L.canvas.top < 120 && first,
+        `canvas ${L.canvas.top}-${L.canvas.bottom}, tabs ${L.tabs.top}, prompt and Paint ${L.paint.top}-${L.paint.bottom}, core note ${L.core.top}-${L.core.bottom}, viewport ${L.ih}`);
+      check(`T0 layout ${name} ${theme}: visual order painting, tabs, scene box, explanation, collapsed Controls, then explainer and badge; tap targets at least 44 px; no horizontal scroll`, order && targets && L.sw <= L.iw, L);
+      if (name !== "1280x800") await shot(p, `first-${name}-${theme}`, `first load at ${name} (${theme}): the example painting, the short explanation, then the tabs and the scene box with Paint`, false);
+      else await shot(p, `first-desktop-${theme}`, `first load on a desktop (${theme}): the example painting with the explanation, tabs, scene box and Paint under it; odds and settings on the right`, false);
       await p.close();
     }
   }
@@ -268,7 +268,7 @@ if (run("t0")) {
       await p.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
       order.push(await p.eval("(() => { const e = document.activeElement; return e.id || (e.tagName === 'A' ? 'a:' + e.textContent : e.dataset.example ? 'example:' + e.dataset.example : e.tagName); })()"));
     }
-    check("T0 Tab order from the skip link: About, the Gesture tab, the scene box, Paint, the seed, then the example buttons", order.slice(0, 5).join() === "a:About,tab-gesture,prompt,paint,seed" && /^example:/.test(order[5]), order);
+    check("T0 Tab order from the skip link: About, the Gesture tab, the scene box, Paint, then the example buttons (the seed sits in the collapsed Controls)", order.slice(0, 5).join() === "a:About,tab-gesture,prompt,paint,example:a harbour at dawn" && /^example:/.test(order[5]), order);
     await p.eval("document.querySelector('.skip').focus(); 1");
     await p.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
     await p.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
@@ -302,17 +302,20 @@ if (run("t1")) {
       const tag = `${view}-${theme}`;
       const p = await open(view, theme);
       const top = await p.eval(`({ h1: document.querySelector('h1').textContent, tag: document.querySelector('.tagline').textContent, title: document.title,
-        ex: document.getElementById('explainer').innerText, tabs: [...document.querySelectorAll('[role=tab]')].map((t) => t.textContent + ':' + t.getAttribute('aria-selected')),
+        ex: document.getElementById('explainer').innerText, core: document.getElementById('core-note').innerText,
+        tabs: [...document.querySelectorAll('[role=tab]')].map((t) => t.textContent + ':' + t.getAttribute('aria-selected')),
         body: document.body.innerText, director: !!document.getElementById('tab-director') || !!document.getElementById('director-ui') })`);
       const b0 = await badge(p);
       check(`T1 ${tag}: name, tagline and title`, top.h1 === "Decisive Painter" && top.tag === "Decisions, not diffusion: a painter that picks from menus." && /^Decisive Painter/.test(top.title), top.title);
       check(`T1 ${tag}: two tabs, Gesture selected by default`, top.tabs.join() === "Gesture:true,Probability map:false", top.tabs);
       check(`T1 ${tag}: Gesture explainer`, top.ex.trim() === "The decision-maker picks one mark at a time from menus, with odds for every choice. Code draws the marks.", top.ex);
+      check(`T1 ${tag}: the core note by the scene box explains decisions-not-diffusion and says Rules runs instantly`, top.core.includes("Code renders the marks; no diffusion model generates the image.")
+        && top.core.includes("Rules mode uses authored probabilities and runs instantly."), top.core);
       check(`T1 ${tag}: badge says Rules and no model before anything is loaded`, b0.d === RULES && b0.n === "" && b0.m === "Model: none loaded", b0);
       check(`T1 ${tag}: Be the art director is gone`, !top.director && !/Be the (art )?director/i.test(top.body));
       check(`T1 ${tag}: Rules | Model toggle with Rules on and Model disabled until loaded`, await p.eval("document.getElementById('decider-rules').checked && document.getElementById('decider-model').disabled && document.getElementById('load-model').textContent === 'Download and enable model (~650 MB)'"));
       await p.waitFor("document.body.dataset.example === 'painted'", 30000);
-      await shot(p, `${tag}-start`, "first load: the example painting (sunflowers, Brush, by the rules) at the top, then the tabs, the empty scene box with Paint and the seed; below, the explainer, Rules badge and Rules | Model toggle");
+      await shot(p, `${tag}-start`, "first load: the example painting (sunflowers, Brush, by the rules) at the top, then the short explanation, the tabs and the empty scene box with Paint; below, the collapsed Controls, the explainer, Rules badge and Rules | Model toggle");
       await paint(p, "a lighthouse in a storm");
       const oc = await p.eval("({ step: document.getElementById('odds').dataset.step, cards: document.querySelectorAll('.odds-card').length })");
       check(`T1 ${tag}: odds panel shows the last mark's 7 questions`, oc.step === "30" && oc.cards === 7, oc);
@@ -821,6 +824,7 @@ if (run("model")) {
     const state = (p) => p.eval(`({ status: document.getElementById('model-status').textContent, decider: document.querySelector('input[name=decider]:checked').value,
       modelDisabled: document.getElementById('decider-model').disabled, btn: document.getElementById('load-model').textContent,
       d: document.getElementById('badge-decider').textContent, m: document.getElementById('badge-model').textContent, n: document.getElementById('badge-note').hidden ? '' : document.getElementById('badge-note').textContent,
+      mode: document.getElementById('mode-note').textContent,
       reading: document.getElementById('reading').textContent, notice: document.getElementById('notice').textContent, label: document.getElementById('progress-label').textContent })`);
     const lookOK = (p) => p.eval(`Object.entries(${js(LOOK_FIELDS)}).every(([f, o]) => o.includes(document.getElementById('look-' + f).value))`);
     const loaded = (p) => p.waitFor("/^Loaded|not available/.test(document.getElementById('model-status').textContent)", 900000);
@@ -839,6 +843,7 @@ if (run("model")) {
       const p = await openM("desktop", "light", () => "block");
       const s0 = await state(p);
       check("T8 Rules is the default and Model is disabled before loading", s0.decider === "rules" && s0.modelDisabled && s0.d === RULES, s0);
+      check("T8 the core note says Rules runs instantly before loading", s0.mode === "Rules mode uses authored probabilities and runs instantly.", s0.mode);
       await p.eval("document.getElementById('load-model').click(); 1");
       await loaded(p);
       const s1 = await state(p);
@@ -877,6 +882,7 @@ if (run("model")) {
     const loadMs = Date.now() - t0;
     const s2 = await state(p);
     check("T8 Download and enable model loads it (int8, WASM) and switches to Model", /^Loaded Qwen3-0\.6B \(int8, \d+ MB, WASM\)/.test(s2.status) && s2.decider === "model" && !s2.modelDisabled, s2.status);
+    check("T8 the core note says the model runs in the browser and the prompt stays on the device", /Qwen3-0\.6B in your browser/.test(s2.mode) && /stays on this device/.test(s2.mode), s2.mode);
     check("T8 the headless browser has no usable WebGPU: WASM with a plain reason", /WebGPU not used: (this browser has no WebGPU|WebGPU found no graphics adapter)\. Model mode is on\.$/.test(s2.status), s2.status);
     await shot(p, "desktop-light-model-loaded", "the Rules | Model toggle after loading: Model on, the model slot names Qwen3-0.6B", false);
     const PROMPT = "a field of sunflowers at noon";

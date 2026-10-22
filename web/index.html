@@ -60,11 +60,7 @@
              placeholder="a harbour at dawn" aria-describedby="prompt-help">
       <button type="submit" id="paint" class="primary">Paint</button>
     </form>
-    <div class="row seed-row seed-near-prompt">
-      <label for="seed">Seed</label>
-      <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Auto" aria-describedby="seed-help">
-      <p id="seed-help" class="help">A seed is a number that lets you recreate the same painting; leave it blank to choose one automatically.</p>
-    </div>
+    <p id="core-note" class="core-note">A decision-maker—authored Rules by default—chooses structured artistic actions. Code renders the marks; no diffusion model generates the image. <span id="mode-note">Rules mode uses authored probabilities and runs instantly.</span></p>
     <p id="prompt-help" class="help">Describe a scene in a few words. The painting is abstract, not a literal picture.</p>
     <p id="notice" class="notice" role="status" aria-live="polite"></p>
     <div class="examples" role="group" aria-label="Example scenes">
@@ -73,16 +69,26 @@
       <button type="button" data-example="a quiet moonlit garden">Moonlit garden</button>
       <button type="button" data-example="a little house in a storm">House in a storm</button>
     </div>
-    <div class="transport" role="group" aria-label="Playback">
-      <button type="button" id="pause" disabled>Pause</button>
-      <button type="button" id="step" disabled>Next mark</button>
-      <button type="button" id="replay" disabled>Replay</button>
+    <div class="transport" role="group" aria-label="After painting">
       <button type="button" id="again" disabled aria-describedby="again-help">Ask it again</button>
       <button type="button" id="download" disabled>Download PNG</button>
       <button type="button" id="copy-link" disabled>Copy link</button>
-      <button type="button" id="save" disabled>Save</button>
     </div>
     <p id="again-help" class="help again-help">Ask it again: the same words with a new seed. The variety comes from picking by the odds.</p>
+    <details id="controls" class="panel controls">
+      <summary>Controls</summary>
+      <div class="row seed-row">
+        <label for="seed">Seed</label>
+        <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Auto" aria-describedby="seed-help">
+        <p id="seed-help" class="help">A seed is a number that lets you recreate the same painting; leave it blank to choose one automatically.</p>
+      </div>
+      <div class="transport transport-more" role="group" aria-label="Playback and saving">
+        <button type="button" id="pause" disabled>Pause</button>
+        <button type="button" id="step" disabled>Next mark</button>
+        <button type="button" id="replay" disabled>Replay</button>
+        <button type="button" id="save" disabled>Save</button>
+      </div>
+    </details>
     <div class="intro">
       <div id="explainer" class="explainer">
         <p id="explainer-text">The decision-maker picks one mark at a time from menus, with odds for every choice. Code draws the marks.</p>
@@ -182,18 +188,21 @@
         <input id="grid" type="range" min="16" max="48" step="1" value="32" aria-describedby="map-estimate">
         <p id="map-estimate" class="help">The rules fill every cell at once.</p>
       </div>
-      <fieldset id="pixel-options" class="row">
-        <legend>Pixel colour</legend>
-        <div class="seg">
-          <input type="radio" name="sample" value="likely" id="sm-likely" checked><label for="sm-likely">Most likely</label>
-          <input type="radio" name="sample" value="sampled" id="sm-sampled"><label for="sm-sampled">Sample from odds</label>
+      <details id="map-options" class="panel">
+        <summary>Map display options</summary>
+        <fieldset id="pixel-options" class="row">
+          <legend>Pixel colour</legend>
+          <div class="seg">
+            <input type="radio" name="sample" value="likely" id="sm-likely" checked><label for="sm-likely">Most likely</label>
+            <input type="radio" name="sample" value="sampled" id="sm-sampled"><label for="sm-sampled">Sample from odds</label>
+          </div>
+          <p class="help">Most likely makes clean blocks; sampling shows more of each cell's colour probabilities.</p>
+        </fieldset>
+        <div class="row check-row">
+          <input type="checkbox" id="certainty" aria-describedby="certainty-help"><label for="certainty">Show certainty overlay</label>
+          <p id="certainty-help" class="help">Brighter areas have more concentrated colour odds; darker areas are less certain.</p>
         </div>
-        <p class="help">Most likely makes clean blocks; sampling shows more of each cell's colour probabilities.</p>
-      </fieldset>
-      <div class="row check-row">
-        <input type="checkbox" id="certainty" aria-describedby="certainty-help"><label for="certainty">Show certainty overlay</label>
-        <p id="certainty-help" class="help">Brighter areas have more concentrated colour odds; darker areas are less certain.</p>
-      </div>
+      </details>
       <details id="model-map-options" class="panel model-map">
         <summary>Model map settings</summary>
         <label for="coarse">Decision grid</label>

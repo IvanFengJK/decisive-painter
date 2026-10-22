@@ -39,6 +39,17 @@ const EXPLAINER = {
   map: "The decision-maker gives odds for every cell of the grid. The painting is those odds, drawn.",
 };
 
+/** The second sentence of the core note by the scene box: who decides the next painting, in one line. */
+const MODE_NOTE = {
+  rules: "Rules mode uses authored probabilities and runs instantly.",
+  model: "Model mode runs Qwen3-0.6B in your browser using WebGPU when available, with WebAssembly fallback. Your prompt stays on this device.",
+  endpoint: "Your own endpoint answers the questions; your scene text is sent to it, as the warning says.",
+};
+
+function syncModeNote() {
+  $("mode-note").textContent = useEndpoint() ? MODE_NOTE.endpoint : slot.mode === "model" ? MODE_NOTE.model : MODE_NOTE.rules;
+}
+
 const app = {
   tab: "gesture",
   style: { gesture: "brush", map: "impasto" },
@@ -450,6 +461,7 @@ function setRunning(running) {
   for (const id of ["replay", "copy-link"]) $(id).disabled = !app.look;
   for (const id of ["download", "save"]) $(id).disabled = !app.look || running; // only a finished picture
   $("again").disabled = !app.look;
+  $("odds").classList.toggle("live", running && g); // the current decision's cards get the accent border while drawing
 }
 
 function newRun() {
@@ -853,6 +865,7 @@ function setTab(tab, { paint = true } = {}) {
   setRunning(false);
   updateEstimate();
   syncModeControls();
+  syncModeNote();
   if (changed) {
     app.painted = null;
     badgeForChoice();
@@ -1036,6 +1049,7 @@ async function loadModelClicked() {
 function afterDeciderChange() {
   updateEstimate();
   syncModeControls();
+  syncModeNote();
   if (!$("prompt").value.trim() || !app.look) {
     // the painting on screen (the example or a link, both drawn by the rules) keeps its badge until Paint
     if (app.painted) showBadge(app.painted.director, app.painted);
@@ -1387,6 +1401,7 @@ function wire() {
       $("endpoint-box").hidden = radioValue("director") !== "endpoint";
       app.painted = null;
       badgeForChoice();
+      syncModeNote();
     });
   }
   $("endpoint-url").addEventListener("change", badgeForChoice);
@@ -1426,6 +1441,7 @@ buildLookFields();
 wire();
 setTab("gesture", { paint: false });
 badgeForChoice();
+syncModeNote();
 updateEstimate();
 // A painting link shows that painting, never the example first. The example starts on the next frame, so the page is
 // drawn (paper, tabs, scene box) before its first mark and the start-up never runs as one long task.
