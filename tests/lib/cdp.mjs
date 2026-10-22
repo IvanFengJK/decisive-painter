@@ -15,13 +15,21 @@ export function findChrome() {
   return c;
 }
 
+/** Flags that let headless Chromium expose WebGPU where the machine has a usable adapter (for Browser.launch({ gpu })). */
+export const WEBGPU_FLAGS = ["--enable-unsafe-webgpu", "--enable-features=Vulkan,WebGPU", "--use-angle=vulkan", "--ignore-gpu-blocklist"];
+
 export class Browser {
-  static async launch() {
-    const dir = mkdtempSync(join(tmpdir(), "r17-chrome-"));
-    const proc = spawn(findChrome(), ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${dir}`,
-      "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--disable-extensions", "--mute-audio",
+  /**
+   * gpu: keep the GPU process (the tests default to --disable-gpu, so no WebGPU); args: extra Chromium flags, for
+   * example WEBGPU_FLAGS; tmp: where the throwaway profile goes, and dirArg(dir) how Chrome is told it (a Windows
+   * chrome.exe started from WSL needs a Windows path). With no options it launches exactly as before.
+   */
+  static async launch({ gpu = false, args = [], tmp = tmpdir(), dirArg = (d) => d } = {}) {
+    const dir = mkdtempSync(join(tmp, "r17-chrome-"));
+    const proc = spawn(findChrome(), ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${dirArg(dir)}`,
+      "--no-first-run", "--no-default-browser-check", ...(gpu ? [] : ["--disable-gpu"]), "--disable-extensions", "--mute-audio",
       "--disable-background-networking", "--disable-component-update", "--disable-sync", "--hide-scrollbars",
-      "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
+      ...args, "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
     const ws = await new Promise((resolve, reject) => {
       let buf = "";
       proc.stderr.on("data", (d) => {

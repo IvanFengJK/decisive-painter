@@ -7,6 +7,19 @@
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light dark">
 <title>About Decisive Painter</title>
+<meta name="description" content="How Decisive Painter works: a decision-maker answers multiple-choice questions with odds and code draws the answers. Rules by default; an optional small model runs in your browser.">
+<link rel="canonical" href="https://kev-paint.vercel.app/about.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Decisive Painter">
+<meta property="og:title" content="About Decisive Painter">
+<meta property="og:description" content="How Decisive Painter works: a decision-maker answers multiple-choice questions with odds and code draws the answers. Rules by default; an optional small model runs in your browser.">
+<meta property="og:url" content="https://kev-paint.vercel.app/about.html">
+<meta property="og:image" content="https://kev-paint.vercel.app/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Decisive Painter: decisions, not diffusion. An abstract painting of a field of sunflowers at noon in yellow and blue brush marks, beside two cards with the decision-maker's odds for its last mark.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -55,14 +68,21 @@
     composition's places, soft edges, a light-to-dark gradient, seeded smooth noise and a subject blob give every cell
     its odds.</p>
   <p><strong>Model (optional)</strong>: press <strong>Download and enable model</strong> to download Qwen3-0.6B (a general small language
-    model, int8, about 650 MB, Apache-2.0) and run it inside this tab, in a background worker on WebAssembly. Nothing is
-    downloaded before you press it, and your words are never sent to a server. It is not a trained decision model: it
+    model, int8, about 650 MB, Apache-2.0) and run it inside this tab, in a background worker: on WebGPU when your
+    graphics card can run it (a short test question checks the answers first), otherwise on WebAssembly; the page says
+    which it used, and why when it is not WebGPU. Nothing is downloaded before you press it, and your words are never sent to a server. It is not a trained decision model: it
     scores the lettered options of each question from its next-word probabilities, asks each question with the options
     in both orders and averages them, and no option may get more than 85%.</p>
   <ul>
     <li><strong>Gesture + Model</strong>: the model answers the six recipe questions once (mood, harmony, hue family,
-      value key, saturation, composition; about 40 seconds). The marks then follow the authored weights. The badge says
-      "recipe: model, marks: authored weights".</li>
+      value key, saturation, composition; about 40 seconds on WebAssembly). The marks then follow the authored weights,
+      and the badge says "recipe: model, marks: authored weights". Tick "Let the model choose the colour of a few marks
+      too" (off by default) and, while the painting grows, it also chooses the colour role of one or two marks in each
+      phase after the background (4 of 30 marks), each time reading a short summary of what is already on the canvas and
+      the last two marks. That adds about 50 seconds on WebAssembly, and its colours usually look worse than the rules'.
+      The odds cards of those marks are labelled "model", and the badge says "recipe and the colour of 4 of 30 marks:
+      model; everything else: authored weights". If the model fails during a painting, the rules paint the rest of it and
+      the badge says from which mark.</li>
     <li><strong>Probability map + Model</strong>: the model answers one colour question for each cell of a coarse grid
       (6x6 = 36 questions by default, about 6 minutes on a desktop CPU; or 4x4 or 8x8), with progress and Cancel. Its odds are interpolated smoothly to the
       full grid; "Blend with rules" mixes in the rules' map half and half. The badge says "Model on a 6x6 grid,
@@ -72,7 +92,8 @@
     near-monochrome palettes, and the rules usually looked better; a no-model control beat a 0.6B model. A small model
     deciding every cell is the hardest job here, so expect rough maps: it can read "upper part" and "lower part" a little,
     but it does not do per-cell colour well. 4-bit builds changed the model's top picks a lot, so only the 8-bit build is
-    used. If the model cannot load (no WebAssembly, not enough memory, offline), the page says so and the rules stay on.
+    used. WebGPU and WebAssembly can answer close calls differently, so the same words and seed can give a different
+    recipe on another device. If the model cannot load (no WebAssembly, not enough memory, offline), the page says so and the rules stay on.
     Shared links and saved paintings always open with the rules; the visitor can load the model again.</p>
 
   <h2>Decisions, not diffusion</h2>

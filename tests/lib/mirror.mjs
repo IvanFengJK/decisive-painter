@@ -4,7 +4,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 
-const TYPES = { ".json": "application/json", ".wasm": "application/wasm", ".mjs": "text/javascript", ".onnx": "application/octet-stream" };
+const TYPES = { ".json": "application/json", ".wasm": "application/wasm", ".mjs": "text/javascript", ".js": "text/javascript", ".onnx": "application/octet-stream" };
 
 export function serveMirror(dir) {
   const hits = [];

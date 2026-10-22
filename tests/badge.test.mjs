@@ -1,7 +1,9 @@
 // The decision-maker badge reads the Director itself, so a model Director changes it with no page edits.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { EndpointDirector, RuleDirector, directorBadge, optionsOf, paintSteps } from "../web/director.js";
+import { EndpointDirector, MODEL_BADGE, RECIPE_ONLY_NOTE, RULES_BADGE, RuleDirector, decisionBadge, directorBadge, marksNote, optionsOf,
+  paintSteps } from "../web/director.js";
+import { ModelDirector } from "../web/model-director.js";
 import { readPrompt } from "../web/recipes.js";
 
 class MockModel {
@@ -35,4 +37,24 @@ test("badge: the mock model Director paints through the same harness", async () 
     n = s.step;
   }
   assert.equal(n, 10);
+});
+
+test("badge: Gesture + model says exactly which marks the model decided", () => {
+  const model = new ModelDirector({ scorer: async () => [0], info: { name: "Qwen3-0.6B" } });
+  assert.deepEqual(decisionBadge({ tab: "gesture", director: model, budget: 30 }), { decider: MODEL_BADGE, note: RECIPE_ONLY_NOTE });
+  assert.equal(RECIPE_ONLY_NOTE, "recipe: model, marks: authored weights");
+  model.marks = true;
+  assert.equal(decisionBadge({ tab: "gesture", director: model, budget: 30 }).note,
+    "recipe and the colour of 4 of 30 marks: model; everything else: authored weights");
+  assert.equal(decisionBadge({ tab: "gesture", director: model, budget: 50 }).note,
+    "recipe and the colour of 5 of 50 marks: model; everything else: authored weights");
+  assert.equal(decisionBadge({ tab: "gesture", director: model }).note,
+    "recipe and the colour of a few marks: model; everything else: authored weights");
+  assert.equal(decisionBadge({ tab: "map", director: model, coarse: 6 }).note, "Model on a 6x6 grid, interpolated", "the map note is unchanged");
+  assert.deepEqual(decisionBadge({ tab: "gesture", director: new RuleDirector(), budget: 30 }), { decider: RULES_BADGE, note: "" });
+  assert.equal(marksNote({ questions: ["colour", "fill"], budget: 20, planned: 5, decided: 0, fallback: null }),
+    "recipe and the colour and fill of 5 of 20 marks: model; everything else: authored weights");
+  assert.equal(marksNote({ questions: ["colour"], budget: 20, planned: 5, decided: 3, fallback: { step: 14, reason: "the model stopped while answering" } }),
+    "recipe and the colour of 3 of 20 marks: model; everything else: authored weights (from mark 14 on, the rules: the model stopped while answering)");
+  assert.equal(marksNote(null), RECIPE_ONLY_NOTE);
 });

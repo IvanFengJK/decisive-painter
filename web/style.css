@@ -77,7 +77,9 @@ a { color: var(--fg); text-underline-offset: 3px; }
 .layout { padding: 0 16px; }
 
 /* ---------------------------------------------------------------------------------------- the stage */
-.intro { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 16px; margin: 4px 0 10px; }
+/* Order (DOM = visual = Tab order): the painting first, then the tabs, the scene box with Paint and the seed, then
+   playback, then what decides (explainer, badge, Rules | Model). On a phone the painting and Paint share the first screen. */
+.intro { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 16px; margin: 16px 0 0; }
 .explainer { font-size: 0.9rem; line-height: 1.35; }
 .explainer p { margin: 0; }
 .explainer p:first-child { font-weight: 650; }
@@ -104,18 +106,20 @@ a { color: var(--fg); text-underline-offset: 3px; }
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 6px 20px rgb(60 40 20 / 0.10);
   overflow: hidden;
 }
-.mode-label { margin: 12px 0 4px; font-size: 0.8125rem; font-weight: 650; color: var(--muted); }
+.mode-label { margin: 10px 0 4px; font-size: 0.8125rem; font-weight: 650; color: var(--muted); }
+.example-note { margin: 4px 0 0; font-size: 0.875rem; line-height: 1.4; color: var(--muted); }
+.example-note[hidden] { display: none; }
 .stage > .prompt-row { margin: 0; }
-.seed-near-prompt { margin: 6px 0 0; grid-template-columns: 42px minmax(90px, 160px); justify-content: start; gap: 4px 8px; }
+.seed-row.seed-near-prompt { margin: 6px 0 0; grid-template-columns: 42px minmax(90px, 160px) 1fr; gap: 4px 8px; }
 .seed-near-prompt .help { grid-column: 1 / -1; }
 .stage > #prompt-help { margin-top: 5px; }
-.examples { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 12px; color: var(--muted); font-size: 0.8125rem; }
+.examples { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0; color: var(--muted); font-size: 0.8125rem; }
 .examples span { margin-right: 2px; }
 .examples button { min-height: 34px; padding: 4px 10px; border-radius: 999px; font-size: 0.8125rem; }
 canvas { display: block; width: 100%; height: 100%; }
 canvas.pixelated { image-rendering: pixelated; image-rendering: crisp-edges; }
 
-.progress-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.progress-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 progress {
   flex: 0 0 34%;
   height: 8px;
@@ -129,11 +133,12 @@ progress::-webkit-progress-bar { background: var(--surface-2); border-radius: 4p
 progress::-webkit-progress-value { background: var(--accent); border-radius: 4px; }
 progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
 .progress-label { margin: 0; font-size: 0.9rem; color: var(--muted); min-height: 1.5em; }
+#cancel-run { flex: none; min-height: 44px; margin-left: auto; }
 
 .transport { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .transport button { flex: 1 1 auto; }
 
-.notice { min-height: 1.5em; margin: 8px 0 0; font-size: 0.95rem; overflow-wrap: anywhere; }
+.notice { min-height: 1.5em; margin: 6px 0 0; font-size: 0.95rem; overflow-wrap: anywhere; }
 .stage #advanced { margin-top: 8px; }
 
 /* ---------------------------------------------------------------------------------------- the odds panel */
@@ -152,6 +157,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
 }
 .odds-card h3 { margin: 0 0 6px; font-size: 0.875rem; }
+.odds-by { padding: 0 5px; border: 1px solid var(--accent); border-radius: 4px; color: var(--accent); font-size: 0.6875rem; font-weight: 650; }
 .odds-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
 .odds-list li {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name pct" "bar bar";
@@ -185,7 +191,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
   opacity: 0.6;
 }
 
-.tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 12px; margin-bottom: 12px; }
+.tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 12px; margin-bottom: 10px; }
 .tabs [role="tab"] {
   flex: 1 1 0;
   border: 0;
@@ -336,13 +342,14 @@ h3.small { font-size: 0.9rem; margin: 12px 0 4px; }
     align-items: start;
   }
   .layout { grid-template-areas: "stage odds" "stage sheet"; grid-template-rows: auto 1fr; }
-  .stage { grid-area: stage; } /* not sticky: with the prompt and decider in it, the stage is taller than the window */
+  /* not sticky: with the prompt and decider in it, the stage is taller than the window. Everything in it shares the
+     painting's width, so the tabs, the scene box and Paint sit right under the painting. */
+  .stage { grid-area: stage; --col: min(100%, max(400px, calc(100vh - 330px))); }
+  .stage > :not(.sr-only) { width: var(--col); margin-left: auto; margin-right: auto; }
   .odds { grid-area: odds; margin-top: 0; }
   .odds-card { flex-basis: 172px; }
-  .frame { width: min(100%, calc(100vh - 300px)); margin: 0 auto; }
-  .progress-row { width: min(100%, calc(100vh - 300px)); margin-left: auto; margin-right: auto; }
   .transport { justify-content: center; }
-  .notice, .again-help { text-align: center; }
+  .notice, .again-help, .example-note { text-align: center; }
   .intro { flex-wrap: nowrap; }
   .who { flex-direction: column; align-items: flex-end; flex: 0 0 auto; }
   .sheet {

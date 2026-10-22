@@ -22,11 +22,17 @@ Two tabs are two ways to draw with a decision-maker, each with its own styles:
 The decision-maker is a visible **Rules | Model** toggle on both tabs, and the badge always says exactly what decided
 the painting on screen:
 
-- **Rules** (default, instant, no download): authored tables. Badge: "Decision-maker: Rules (authored tables)".
-- **Model** (after the visitor presses Download and enable model): **Qwen3-0.6B**, int8, about 650 MB, running in a Worker on
-  WebAssembly in the tab; nothing is sent to a server. Badge: "Decision-maker: Qwen3-0.6B (running in your browser)"
-  plus what it decides: on Gesture "recipe: model, marks: authored weights" (the six recipe questions, about 40 s); on
-  the map "Model on a 6x6 grid, interpolated" (one colour question per coarse cell, interpolated to the full grid;
+- **Rules** (default, instant, no download): authored tables. Badge: "Decision-maker: Rules (authored tables)". A plain
+  visit opens on an example the rules paint at once ("a field of sunflowers at noon", its automatic seed); a painting
+  link shows its own painting instead.
+- **Model** (after the visitor presses Download and enable model): **Qwen3-0.6B**, int8, about 650 MB, running in a Worker in
+  the tab, on WebGPU when the graphics card can run it and on WebAssembly otherwise; nothing is sent to a server. The
+  page says which backend it used and, when it is WebAssembly, why WebGPU was not. Badge: "Decision-maker: Qwen3-0.6B
+  (running in your browser)" plus what it decides: on Gesture "recipe: model, marks: authored weights" (the six recipe
+  questions). With "Let the model choose the colour of a few marks too" ticked (off by default), it also chooses the
+  colour role of one or two marks in each phase after the backdrop, each time reading a short summary of the painting
+  so far. The odds cards of those marks are then labelled "model" and the badge says "recipe and the colour of 4 of 30
+  marks: model; everything else: authored weights". On the map "Model on a 6x6 grid, interpolated" (one colour question per coarse cell, interpolated to the full grid;
   4x4 and 8x8 too; optionally "..., blended with rules").
 
 ## Run it locally
@@ -64,8 +70,10 @@ node tests/guard-eval.mjs heldout     # guardrail lists on a test set: dev, held
 node tests/browser.mjs                # headless Chromium: both tabs, every style, determinism, share links, performance,
                                       # network, CSP, accessibility (about 10 minutes without the model,
                                       # about 20 with MODEL_MIRROR set; writes out/). Keep it for release checks.
-node tests/browser.mjs quick          # everyday check: determinism and share links only (about 3 minutes)
-node tests/browser.mjs t1             # one section: t1 t2 t3 t5 t6 t9 model
+node tests/browser.mjs quick          # everyday check: first load, determinism and share links (about 4 minutes)
+node tests/browser.mjs t0             # one section: t0 t1 t2 t3 t5 t6 t9 model (t0: the startup example, links vs
+                                      # the example, phone layout, Tab order, the link preview)
+node tests/og-image.mjs               # regenerate web/og-image.jpg (the 1200x630 link preview) from the startup example
 node tests/sheet.mjs 8                # contact sheet of 8 scenes x 5 views in Rules mode (out/shots/contact-sheet.png)
 ```
 
@@ -112,7 +120,11 @@ links and Replay do.
   Paint code kept so `v=1` Paint links keep their exact pixels.
 - `web/model-director.js`, `web/model-loader.js`, `web/model-worker.js`, `web/model-host.js`: Model mode. The model
   scores the lettered options from the next-token probabilities, both option orders averaged, no option above 0.85; it
-  runs in a Worker so the page stays responsive.
+  runs in a Worker so the page stays responsive. The worker tries WebGPU first (a hardware adapter, the session starts,
+  a fixed test question gets the expected answer) and otherwise starts again on WebAssembly with the files from the
+  cache.
+- The page's link preview: Open Graph and Twitter-card tags in `web/index.html` with the canonical URL
+  `https://kev-paint.vercel.app/` and `web/og-image.jpg` (1200x630), made from the startup example by `tests/og-image.mjs`.
 - `web/recipes.js`, `web/state.js`: about 60 authored scene recipes, generic words, and the state text with the
   visitor's words in one delimited field.
 - Share links (`web/share.js`): version 2 carries the tab, style, recipe (as option numbers), seed, and the budget or
@@ -147,8 +159,20 @@ never reaches the model.
 - Model mode is a general 0.6B model scoring options, not a trained decision model. Earlier tests found small models
   drift towards austere, mid-value, near-monochrome palettes, and a no-model control beat a 0.6B model; expect the rules
   to look better. Per-cell colour is the hardest job for it: maps from the model are rough.
-- Model mode is slow on WebAssembly: about 40 s for the recipe and several minutes for a 6x6 map on a desktop CPU
-  (measured numbers are in the round report). Only the int8 build is used; 4-bit builds changed the top picks too often.
+- Model mode is slow on WebAssembly: about 40 s for the recipe, about 50 s more with the mark colours ticked and
+  several minutes for a 6x6 map on a desktop CPU. The model's mark colours usually look worse than the rules' (it almost
+  never picks the dominant colour), which is why they are opt-in. Cancel stops between questions: the question the
+  model is reading still finishes in its worker (up to about 6 s on WebAssembly), and the next painting waits for it. Only the int8 build is used; 4-bit builds changed the top picks too often.
+- WebGPU helps less than it could: the WebGPU runtime has no kernels for the int8 build's quantised matrix products, so
+  those still run on the CPU. Measured on one laptop (RTX 3080 Ti, Windows Chrome), a 412-token prompt took 5.2 s on
+  WebGPU against 17.7 s on WebAssembly, and a 75-token recipe question 1.4 s against 1.9 s; loading took about 1.7 s
+  longer (the test question). Other GPUs are not measured. With storage blocked (some private windows) WebGPU is not
+  tried, because a failed try would download the model a second time. If WebGPU fails after loading, that question
+  fails (the rules take over for the painting) and the model moves to WebAssembly for the next one. Headless Chromium under WSL2 only offers a software adapter,
+  which the page does not use, so the browser tests exercise the WebAssembly fallback.
+- WebGPU and WebAssembly can answer near-ties differently (a different top option on 3 of 6 test prompts), so the same
+  words and seed can give another recipe on another device. Share links never carry model output, so links are not
+  affected.
 - A word list is never perfect: it will miss some harmful phrasings and may block an odd harmless one.
 - Determinism was tested in Chromium and node only; Impasto uses floating-point maths per pixel, so other engines may
   differ slightly.

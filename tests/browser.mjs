@@ -1,4 +1,6 @@
 // Headless-browser tests for the two-tab page (Gesture | Probability map, Rules | Model). Sections (argv[2] runs one):
+//   t0    first load: the example painting (rules, no model, no link written), share links and anchors, the phone
+//         layout (painting and Paint on the first screen), Tab order from the skip link, the preview image
 //   t1    screenshots and layout: both tabs, every style, the cell odds popup, certainty, the toggle, blocks, About
 //   t2    determinism: identical pixels on two loads per tab and style, equal to node's render (T3 of the brief)
 //   t3    the 12 scenes in every view: non-blank, multi-colour, colour count and time; odds panel; budgets; grid sizes
@@ -6,7 +8,7 @@
 //   t6    performance: Impasto composite at 1x and 4x, 48x48 field, long tasks per style
 //   t9    network (zero requests in Rules), CSP, offline, storage, gallery, endpoint, accessibility, reduced motion
 //   model Model mode end to end with the real model (MODEL_MIRROR=<dir> or MODEL_LIVE=1; skipped otherwise)
-//   quick t2 + t5 only (about 3 minutes); the full run (about 20 minutes with the model) is for release checks
+//   quick t0 + t2 + t5 only (about 4 minutes); the full run (about 20 minutes with the model) is for release checks
 // Uses the installed Chromium through tests/lib/cdp.mjs. Writes out/shots/*.png and out/browser-results*.json; exits 1 if
 // any check fails.
 import { createHash } from "node:crypto";
@@ -24,20 +26,22 @@ import { MapImpasto } from "../web/impasto.js";
 import { BLOCK_MESSAGE } from "../web/policy.js";
 import { LOOK_FIELDS, readPrompt } from "../web/recipes.js";
 import { ROLES, enginePalette } from "../web/render.js";
-import { encodeShare } from "../web/share.js";
+import { fnv1a } from "../web/rng.js";
+import { SEED_MAX, encodeShare } from "../web/share.js";
+import { jpegSize } from "./og-image.mjs";
 
 const ROOT = new URL("../", import.meta.url).pathname;
 const SHOTS = `${ROOT}out/shots/`;
 mkdirSync(SHOTS, { recursive: true });
 const only = process.argv[2] || "all";
-const results = { started: new Date().toISOString(), checks: [], shots: [], t2: [], t3: [], t5: [], t6: {}, t9: {}, a11y: {}, retried: [], model: {} };
+const results = { started: new Date().toISOString(), checks: [], shots: [], t0: {}, t2: [], t3: [], t5: [], t6: {}, t9: {}, a11y: {}, retried: [], model: {} };
 let failed = 0;
 function check(name, ok, detail = "") {
   results.checks.push({ name, ok: !!ok, detail });
   if (!ok) failed++;
   console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail ? ` (${typeof detail === "string" ? detail : JSON.stringify(detail)})` : ""}`);
 }
-const QUICK = ["t2", "t5"]; // `quick`: determinism and share links only (about 3 minutes), for everyday changes
+const QUICK = ["t0", "t2", "t5"]; // `quick`: first load, determinism and share links only (about 4 minutes), for everyday changes
 const run = (name) => only === "all" || only === name || (only === "quick" && QUICK.includes(name));
 
 const { server, url } = await serve(`${ROOT}web`);
@@ -131,6 +135,166 @@ async function nodeSha(r) {
 const recipe = (tab, style, extra = {}) => ({ tab, style, look: readPrompt("a red barn on a hill").look, seed: 4242, budget: 30, mode: "weighted",
   grid: 32, sample: "likely", coarse: 6, ...extra });
 
+
+// ------------------------------------------------------------------------------------------------ T0 first load
+const EXAMPLE = "a field of sunflowers at noon"; // EXAMPLE in web/app.js
+const autoSeed = (text) => fnv1a(`seed|${text.trim().toLowerCase()}`) % (SEED_MAX + 1); // seedFor in web/app.js
+const exampleRecipe = (tab = "gesture", style = "brush") => ({ tab, style, look: readPrompt(EXAMPLE).look, seed: autoSeed(EXAMPLE), budget: 30,
+  mode: "weighted", grid: 32, sample: "likely", coarse: 6 });
+const exampleShown = (p) => p.waitFor("document.body.dataset.example === 'painted'", 30000);
+const firstState = (p) => p.eval(`({ note: document.getElementById('example-note').hidden ? '' : document.getElementById('example-note').textContent,
+  label: document.getElementById('canvas').getAttribute('aria-label'), hash: location.hash, prompt: document.getElementById('prompt').value,
+  placeholder: document.getElementById('prompt').placeholder, seed: document.getElementById('seed').value, reading: document.getElementById('reading').textContent,
+  notice: document.getElementById('notice').textContent, done: document.body.dataset.done || '', example: document.body.dataset.example || '',
+  progress: document.getElementById('progress-label').textContent })`);
+const NOTE = `An example painting: ${EXAMPLE}. Type your own scene and press Paint.`;
+if (run("t0")) {
+  // a plain visit: the rules paint the example quickly; nothing but the page's own files is requested
+  {
+    const p = await browser.newPage({ ...VIEWS.desktop });
+    await p.send("Page.addScriptToEvaluateOnNewDocument", { source: "window.__lt = []; new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__lt.push(Math.round(e.duration)); }).observe({ type: 'longtask', buffered: true });" });
+    const t0 = Date.now();
+    await p.goto(url);
+    await exampleShown(p);
+    const ms = Date.now() - t0;
+    await sleep(2500); // the thumbnails and the load-time benchmark, which waits for the example
+    const st = await firstState(p);
+    const c = await canvasInfo(p);
+    const lt = await p.eval("window.__lt");
+    const reqs = p.requests.map((r) => r.url);
+    results.t0 = { example_ms: ms, long_tasks: lt, requests: reqs.map((u) => u.replace(url, "/")) };
+    check("T0 first load paints the example with the rules (non-blank, multi-colour, Brush, 30 marks)", c.painted > 0.05 && c.colours >= 3 && st.progress === "Finished: 30 marks", `${(c.painted * 100).toFixed(0)}% painted, ${c.colours} colours, ${ms} ms`);
+    check("T0 the example has exactly the pixels of the rules' painting of its words with the automatic seed (node)", c.sha === await nodeSha(exampleRecipe()));
+    check("T0 the example is quick (under 8 s to the finished painting, no pacing between marks)", ms < 8000, `${ms} ms`);
+    check("T0 first load requests only the page's own files: no model loader, worker, host, library or model host", reqs.every((u) => u.startsWith(url)) && !reqs.some((u) => /model-(loader|worker|host)|vendor\/|huggingface|hf\.co|jsdelivr/.test(u)), results.t0.requests);
+    check("T0 the example is labelled as one (caption and canvas description), the prompt box stays empty with its placeholder", st.note === NOTE
+      && st.label.startsWith(`${NOTE} Abstract painting in 30 marks: `) && st.prompt === "" && st.placeholder === "a harbour at dawn" && st.seed === "", st);
+    check("T0 the example writes no link into the address bar and says nothing in the live regions", st.hash === "" && st.reading === "" && st.notice === "" && st.done === "", st);
+    check("T0 the badge says Rules (authored tables), no note", (await badge(p)).d === RULES && (await badge(p)).n === "");
+    check("T0 no main-thread task over 100 ms while the example paints (page start included)", lt.every((d) => d <= 100), `${lt.length} long tasks: ${lt.join(", ")} ms`);
+    // pressing Paint replaces it; the same words give the same pixels (the example is that painting, unpaced)
+    const sha0 = c.sha;
+    await paint(p, EXAMPLE);
+    const st2 = await firstState(p);
+    check("T0 Paint replaces the example: caption gone, a link written, the visitor's reading shown", st2.note === "" && st2.hash.startsWith("#v=2&t=g&st=brush&") && /^Read as: /.test(st2.reading) && /^Abstract painting/.test(st2.label), st2);
+    check("T0 typing the example's words and pressing Paint gives the example's pixels", (await canvasInfo(p)).sha === sha0);
+    check("T0 no console errors on first load", p.errors.length === 0, p.errors.slice(0, 3));
+    await p.close();
+  }
+  // Paint pressed while the example is still painting: the example is cancelled, the visitor's painting is exact
+  {
+    const p = await browser.newPage({ ...VIEWS.phone });
+    await p.send("Emulation.setCPUThrottlingRate", { rate: 4 }); // so the example is still running at the click
+    await p.goto(url);
+    await p.waitFor("/^Mark \\d+ of 30/.test(document.getElementById('progress-label').textContent)", 30000);
+    const busy = await p.eval("document.getElementById('progress-label').textContent");
+    await paint(p, "a red barn on a hill", 120000);
+    await sleep(500);
+    const st = await firstState(p);
+    const rec = { ...exampleRecipe(), look: readPrompt("a red barn on a hill").look, seed: autoSeed("a red barn on a hill") };
+    check("T0 Paint during the example cancels it and paints the visitor's scene exactly", /^Mark \d+ of 30/.test(busy) && st.note === "" && st.example === "" && (await canvasInfo(p)).sha === await nodeSha(rec), { busy, example: st.example });
+    await p.close();
+  }
+  // a tab switch during the example shows the example's recipe as a map, still labelled, still no link
+  {
+    const p = await open("desktop", "light");
+    await setTab(p, "map");
+    const st = await firstState(p);
+    check("T0 switching tabs replaces the example with its recipe as a map (labelled, no link written)", st.note === NOTE && st.hash === ""
+      && st.label.startsWith(`${NOTE} Abstract probability map, 32 by 32 cells`) && (await canvasInfo(p)).sha === await nodeSha(exampleRecipe("map", "impasto")), st);
+    await p.close();
+  }
+  // share links open that painting and never the example; in-page anchors and damaged links get the example
+  for (const [name, rec] of [["v=2 Gesture Sketch", recipe("gesture", "sketch")], ["v=2 Map Pixel", recipe("map", "pixel")]]) {
+    const hash = encodeShare(rec);
+    const p = await browser.newPage({ ...VIEWS.phone });
+    await p.send("Page.addScriptToEvaluateOnNewDocument", { source: "window.__notes = []; document.addEventListener('DOMContentLoaded', () => { const n = document.getElementById('example-note'); new MutationObserver(() => window.__notes.push(n.textContent)).observe(n, { attributes: true, childList: true, characterData: true, subtree: true }); });" });
+    await p.goto(url + hash);
+    await waitDone(p, 0);
+    await sleep(1000);
+    const st = await firstState(p);
+    const notes = await p.eval("window.__notes");
+    check(`T0 a ${name} link shows that painting and never the example (no example run, no caption at any time)`, st.example === "" && st.note === "" && notes.length === 0
+      && st.hash === hash && (await canvasInfo(p)).sha === await nodeSha(rec) && (await badge(p)).n === "opened from a link: drawn with the rules", { notes, st });
+    await p.close();
+  }
+  const v1 = JSON.parse(readFileSync(new URL("./fixtures/v1.0.0-links.json", import.meta.url), "utf8")).links[0];
+  {
+    const p = await open("desktop", "light", v1.hash);
+    await waitDone(p, 0);
+    await sleep(800);
+    const st = await firstState(p);
+    check("T0 a v=1 link shows its painting, not the example", st.example === "" && st.note === "" && (await canvasInfo(p)).sha === v1.sha256, st.hash);
+    await p.close();
+  }
+  for (const [name, hash, noticeRe] of [["the skip link's anchor", "#prompt", /^$/], ["a damaged link", "#v=2&t=g&mo=99&ha=0&hu=0&ke=0&sa=0&co=0&sy=0&sr=0&su=0&s=1&b=20", /damaged/],
+    ["an unsupported version", "#v=7&mo=0", /different version/]]) {
+    const p = await open("phone", "light", hash);
+    await exampleShown(p);
+    const st = await firstState(p);
+    const ok = st.note === NOTE && noticeRe.test(st.notice) && (hash === "#prompt" ? st.hash === "#prompt" : st.hash === "") && (await canvasInfo(p)).sha === await nodeSha(exampleRecipe());
+    check(`T0 ${name} is not a painting: the example is painted${hash === "#prompt" ? "" : " under the link's notice, and the bad link is removed"}`, ok, st);
+    await p.close();
+  }
+  // layout: the painting at the top, then the tabs, the scene box, Paint and the seed, all on the first screen
+  for (const [name, vp] of [["390x844", { width: 390, height: 844, mobile: true }], ["370x822", VIEWS.phone], ["320x640", { width: 320, height: 640, mobile: true }], ["1280x800", VIEWS.desktop]]) {
+    for (const theme of ["light", "dark"]) {
+      const p = await browser.newPage({ ...vp, dark: theme === "dark" });
+      await p.goto(url);
+      await exampleShown(p);
+      const L = await p.eval(`(() => { const r = (id) => { const b = document.getElementById(id).getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: Math.round(b.height), w: Math.round(b.width) }; };
+        return { y: scrollY, ih: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth, canvas: r('canvas'), tabs: r('tab-gesture'), map: r('tab-map'), prompt: r('prompt'),
+          paint: r('paint'), seed: r('seed'), explainer: r('explainer'), badge: r('badge-decider') }; })()`);
+      const first = ["canvas", "tabs", "prompt", "paint"].every((k) => L[k].top >= 0 && L[k].bottom <= L.ih) && L.seed.top < L.ih;
+      const order = L.canvas.bottom <= L.tabs.top && L.tabs.bottom <= L.prompt.top && L.prompt.bottom <= L.seed.top && L.seed.bottom <= L.explainer.top && L.explainer.top <= L.badge.top;
+      const targets = ["tabs", "map", "prompt", "paint", "seed"].every((k) => L[k].h >= 44);
+      results.t0[`layout_${name}_${theme}`] = L;
+      check(`T0 layout ${name} ${theme}: the painting is at the top (top ${L.canvas.top} px) and the tabs, scene box and Paint are on the first screen without scrolling`, L.y === 0 && L.canvas.top < 120 && first,
+        `canvas ${L.canvas.top}-${L.canvas.bottom}, tabs ${L.tabs.top}, prompt and Paint ${L.paint.top}-${L.paint.bottom}, seed ${L.seed.top}, viewport ${L.ih}`);
+      check(`T0 layout ${name} ${theme}: visual order painting, tabs, scene box, seed, then explainer and badge; tap targets at least 44 px; no horizontal scroll`, order && targets && L.sw <= L.iw, L);
+      if (name !== "1280x800") await shot(p, `first-${name}-${theme}`, `first load at ${name} (${theme}): the example painting, then the tabs, the scene box with Paint and the seed`, false);
+      else await shot(p, `first-desktop-${theme}`, `first load on a desktop (${theme}): the example painting with the tabs, scene box and Paint under it; odds and settings on the right`, false);
+      await p.close();
+    }
+  }
+  // keyboard: Tab order follows the visual order; the skip link lands on the scene box
+  {
+    const p = await open("phone", "light");
+    await exampleShown(p);
+    await p.eval("document.querySelector('.skip').focus(); 1");
+    const order = [];
+    for (let i = 0; i < 6; i++) {
+      await p.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+      await p.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+      order.push(await p.eval("(() => { const e = document.activeElement; return e.id || (e.tagName === 'A' ? 'a:' + e.textContent : e.dataset.example ? 'example:' + e.dataset.example : e.tagName); })()"));
+    }
+    check("T0 Tab order from the skip link: About, the Gesture tab, the scene box, Paint, the seed, then the example buttons", order.slice(0, 5).join() === "a:About,tab-gesture,prompt,paint,seed" && /^example:/.test(order[5]), order);
+    await p.eval("document.querySelector('.skip').focus(); 1");
+    await p.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+    await p.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    await sleep(300);
+    const after = await p.eval("({ focus: document.activeElement.id, note: document.getElementById('example-note').hidden ? '' : 'shown' })");
+    check("T0 the skip link lands on the scene box and leaves the example in place", after.focus === "prompt" && after.note === "shown", after);
+    await p.close();
+  }
+  // the link preview: Open Graph tags and the image they name, hosted with the page
+  {
+    const p = await open("desktop", "light");
+    const og = await p.eval(`Object.fromEntries([...document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"], link[rel=canonical]')].map((m) => [m.getAttribute('property') || m.getAttribute('name') || 'canonical', m.content || m.href]))`);
+    const img = readFileSync(`${ROOT}web/og-image.jpg`);
+    const size = jpegSize(img);
+    const served = await p.eval("fetch('og-image.jpg').then((r) => r.status)");
+    results.t0.og = { ...og, bytes: img.length, ...size };
+    check("T0 Open Graph: type, site name, title, description, url and canonical at https://kev-paint.vercel.app/", og["og:type"] === "website" && og["og:site_name"] === "Decisive Painter"
+      && /^Decisive Painter/.test(og["og:title"]) && og["og:description"]?.length > 50 && og["og:url"] === "https://kev-paint.vercel.app/" && og.canonical === "https://kev-paint.vercel.app/", og);
+    check("T0 Open Graph image: an absolute https URL to the page's own og-image.jpg, 1200 x 630, typed, with alt text; summary_large_image",
+      og["og:image"] === "https://kev-paint.vercel.app/og-image.jpg" && og["og:image:type"] === "image/jpeg" && og["og:image:width"] === "1200" && og["og:image:height"] === "630"
+      && og["og:image:alt"]?.length > 30 && og["twitter:card"] === "summary_large_image", og);
+    check("T0 web/og-image.jpg is a 1200 x 630 JPEG under 300 KB and is served with the page", size.w === 1200 && size.h === 630 && img.length < 300000 && served === 200, `${size.w} x ${size.h}, ${img.length} bytes, HTTP ${served}`);
+    await p.close();
+  }
+}
+
 // ------------------------------------------------------------------------------------------------ T1 screenshots
 if (run("t1")) {
   for (const view of ["phone", "desktop"]) {
@@ -147,7 +311,8 @@ if (run("t1")) {
       check(`T1 ${tag}: badge says Rules and no model before anything is loaded`, b0.d === RULES && b0.n === "" && b0.m === "Model: none loaded", b0);
       check(`T1 ${tag}: Be the art director is gone`, !top.director && !/Be the (art )?director/i.test(top.body));
       check(`T1 ${tag}: Rules | Model toggle with Rules on and Model disabled until loaded`, await p.eval("document.getElementById('decider-rules').checked && document.getElementById('decider-model').disabled && document.getElementById('load-model').textContent === 'Download and enable model (~650 MB)'"));
-      await shot(p, `${tag}-start`, "the empty page: name, tagline, Gesture explainer, Rules badge, Rules | Model toggle with the Download and enable model button");
+      await p.waitFor("document.body.dataset.example === 'painted'", 30000);
+      await shot(p, `${tag}-start`, "first load: the example painting (sunflowers, Brush, by the rules) at the top, then the tabs, the empty scene box with Paint and the seed; below, the explainer, Rules badge and Rules | Model toggle");
       await paint(p, "a lighthouse in a storm");
       const oc = await p.eval("({ step: document.getElementById('odds').dataset.step, cards: document.querySelectorAll('.odds-card').length })");
       check(`T1 ${tag}: odds panel shows the last mark's 7 questions`, oc.step === "30" && oc.cards === 7, oc);
@@ -220,7 +385,8 @@ if (run("t1")) {
     }
   }
   const p = await open("phone", "light", "#v=7&mo=0");
-  await shot(p, "phone-light-badlink", "a share link from an unsupported version: friendly error, nothing painted", false);
+  await p.waitFor("document.body.dataset.example === 'painted'", 30000);
+  await shot(p, "phone-light-badlink", "a share link from an unsupported version: the friendly error under the scene box, and the example painting instead", false);
   await p.close();
 }
 
@@ -711,16 +877,35 @@ if (run("model")) {
     const loadMs = Date.now() - t0;
     const s2 = await state(p);
     check("T8 Download and enable model loads it (int8, WASM) and switches to Model", /^Loaded Qwen3-0\.6B \(int8, \d+ MB, WASM\)/.test(s2.status) && s2.decider === "model" && !s2.modelDisabled, s2.status);
+    check("T8 the headless browser has no usable WebGPU: WASM with a plain reason", /WebGPU not used: (this browser has no WebGPU|WebGPU found no graphics adapter)\. Model mode is on\.$/.test(s2.status), s2.status);
     await shot(p, "desktop-light-model-loaded", "the Rules | Model toggle after loading: Model on, the model slot names Qwen3-0.6B", false);
     const PROMPT = "a field of sunflowers at noon";
+    // the odds cards say which questions the model answered, mark by mark
+    await p.eval(`(() => { window.__byModel = {}; const el = document.getElementById('odds');
+      new MutationObserver(() => { const m = [...el.querySelectorAll('.odds-card[data-by=model]')].map((c) => c.dataset.q);
+        if (m.length) window.__byModel[el.dataset.step] = m; }).observe(el, { subtree: true, childList: true, attributes: true }); return 1; })()`);
+    const marksBox = await p.eval("({ shown: !document.getElementById('model-marks-row').hidden, on: document.getElementById('model-marks').checked })");
+    check("T8 after loading, 'Let the model choose the colour of a few marks too' is offered on Gesture and off", marksBox.shown && !marksBox.on, marksBox);
+    // by default the model chooses the recipe only and the marks follow the authored weights
+    const g0 = await paint(p, PROMPT, 900000);
+    const s30 = await state(p);
+    check("T8 Gesture + Model by default: the recipe from the model, every mark from the authored weights (no card says model)",
+      s30.d === MODEL && s30.n === "recipe: model, marks: authored weights" && JSON.stringify(await p.eval("window.__byModel")) === "{}", { s30, g0 });
+    // opted in: the model also chooses the colour of the planned marks
+    await p.eval("window.__byModel = {}; const b = document.getElementById('model-marks'); b.click(); b.checked");
     const gMs = await paint(p, PROMPT, 900000);
     const s3 = await state(p);
     const c3 = await canvasInfo(p);
     check("T8 Gesture + Model paints a valid painting with a recipe from the fixed options", c3.painted > 0.05 && c3.colours >= 3 && await lookOK(p), `${c3.colours} colours, ${gMs} ms`);
-    check("T8 Gesture + Model badge: the model chose the recipe, the marks follow the authored weights", s3.d === MODEL && s3.n === "recipe: model, marks: authored weights"
+    const byModel = await p.eval("window.__byModel");
+    check("T8 Gesture + Model with the box ticked: the model chose the colour of the planned marks (8, 13, 20, 28 of 30) and the cards say so",
+      JSON.stringify(byModel) === JSON.stringify({ 8: ["colour"], 13: ["colour"], 20: ["colour"], 28: ["colour"] }), byModel);
+    check("T8 Gesture + Model badge with the box ticked: the model chose the recipe and the colour of 4 of 30 marks", s3.d === MODEL
+      && s3.n === "recipe and the colour of 4 of 30 marks: model; everything else: authored weights"
       && /^Recipe from the model: /.test(s3.reading) && /^Model: Qwen3-0\.6B loaded \(int8, WASM, \d+ MB\)$/.test(s3.m), s3);
-    await shot(p, "desktop-light-model-gesture", "Gesture + Model: badge 'Qwen3-0.6B (running in your browser)', note 'recipe: model, marks: authored weights'", false);
+    await shot(p, "desktop-light-model-gesture", "Gesture + Model: badge 'Qwen3-0.6B (running in your browser)', note 'recipe and the colour of 4 of 30 marks: model; ...'", false);
     const lt1 = await p.eval("window.__lt");
+    await p.eval("document.getElementById('model-marks').click(); 1"); // off again: the later checks only need the recipe
     // the Map tab: before Paint the rules' map is shown and the badge says so
     await p.eval("document.getElementById('tab-map').click(); 1");
     await p.waitFor("document.getElementById('progress-label').textContent.startsWith('Finished')", 60000);
@@ -788,6 +973,18 @@ if (run("model")) {
       inj.push({ prompt: s, ms: ims, ok, reading: st.reading });
       check(`T8 injection-like prompt keeps the fixed options ("${s.slice(0, 30)}...")`, ok && /^Recipe from the model: /.test(st.reading) && !/stopped/.test(st.notice), st.reading);
     }
+    // Cancel while the model chooses a mark's colour: the painting stops there, nothing more is asked
+    await p.eval("document.getElementById('model-marks').click(); 1");
+    const d0 = Number(await p.eval("document.body.dataset.done || 0"));
+    await p.eval(`document.getElementById('prompt').value=${js("a lighthouse in a storm")}; document.getElementById('paint').click(); 1`);
+    await p.waitFor("/choosing the colour of mark/.test(document.getElementById('progress-label').textContent)", 900000);
+    const cancelVisible = await p.eval("!document.getElementById('cancel-run').hidden && !!document.getElementById('cancel-run').closest('.progress-row')");
+    await p.eval("document.getElementById('cancel-run').click(); 1");
+    const stepAt = await p.eval("document.getElementById('odds').dataset.step");
+    await sleep(15000);
+    const sc = { visible: cancelVisible, stepAt, stepLater: await p.eval("document.getElementById('odds').dataset.step"),
+      label: await p.eval("document.getElementById('progress-label').textContent"), done: Number(await p.eval("document.body.dataset.done || 0")) };
+    check("T8 Cancel during a model mark: the button shows beside the progress bar, the painting stops and does not finish", sc.visible && sc.stepLater === sc.stepAt && sc.label === "Cancelled" && sc.done === d0, sc);
     const after = p.routed.slice(n0);
     const words = /sunflower|noon|ignore|pirate|hardcore|porn|SYSTEM/i;
     const hosts = [...new Set(after.map((r) => new URL(r.url).host))].map((h) => (url.includes(h) ? "(this page)" : h));

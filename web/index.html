@@ -8,6 +8,18 @@
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="Decisive Painter. Decisions, not diffusion: a painter driven by a decision-maker that answers multiple-choice questions with probabilities; code draws the answers. Two ways to draw: Gesture (one mark at a time) and Probability map (odds for every cell). Rules by default; an optional small model runs in your browser.">
 <title>Decisive Painter: decisions, not diffusion</title>
+<link rel="canonical" href="https://kev-paint.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Decisive Painter">
+<meta property="og:title" content="Decisive Painter: decisions, not diffusion">
+<meta property="og:description" content="A free painter in your browser, driven by a decision-maker instead of a diffusion model: it answers multiple-choice questions with odds for every option, and code draws the answers. No sign-up; nothing you type is uploaded.">
+<meta property="og:url" content="https://kev-paint.vercel.app/">
+<meta property="og:image" content="https://kev-paint.vercel.app/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Decisive Painter: decisions, not diffusion. An abstract painting of a field of sunflowers at noon in yellow and blue brush marks, beside two cards with the decision-maker's odds for its last mark.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
 <script type="module" src="app.js"></script>
@@ -25,18 +37,18 @@
 <main class="layout">
   <section class="stage" aria-labelledby="stage-title">
     <h2 id="stage-title" class="sr-only">Painting</h2>
-    <div class="intro">
-      <div id="explainer" class="explainer">
-        <p id="explainer-text">The decision-maker picks one mark at a time from menus, with odds for every choice. Code draws the marks.</p>
-      </div>
-      <div class="who" role="group" aria-label="Who decides">
-        <p id="badge-decider" class="badge">Decision-maker: Rules (authored tables)</p>
-        <p id="badge-note" class="badge-note" hidden></p>
-        <p class="badge slot"><span id="badge-model">Model: none loaded</span>
-          <button type="button" class="tip-btn" aria-label="About the model slot" aria-describedby="slot-tip">?</button>
-          <span id="slot-tip" class="tip" role="tooltip">Any Director can answer these questions; a model plugs in through the Director interface and is named here.</span></p>
-      </div>
+    <div class="frame" id="frame">
+      <canvas id="canvas" width="600" height="600" role="img" aria-label="Blank paper, waiting for a scene"></canvas>
+      <canvas id="overlay" class="overlay" width="32" height="32" aria-hidden="true" hidden></canvas>
+      <div id="cell-pop" class="cell-pop" hidden></div>
     </div>
+    <div class="progress-row">
+      <progress id="progress" max="30" value="0" aria-labelledby="progress-label"></progress>
+      <p id="progress-label" class="progress-label">Ready</p>
+      <button type="button" id="cancel-run" hidden>Cancel</button>
+    </div>
+    <p id="example-note" class="example-note" hidden></p>
+    <p id="map-help" class="help map-help" hidden>Hover or tap a cell to see its odds. With the keyboard: focus the painting, then use the arrow keys; Escape hides the odds.</p>
     <p class="mode-label">Choose how it draws</p>
     <div class="tabs" role="tablist" aria-label="Way of drawing">
       <button type="button" role="tab" id="tab-gesture" aria-selected="true" aria-controls="panel-gesture">Gesture</button>
@@ -54,6 +66,35 @@
       <p id="seed-help" class="help">A seed is a number that lets you recreate the same painting; leave it blank to choose one automatically.</p>
     </div>
     <p id="prompt-help" class="help">Describe a scene in a few words. The painting is abstract, not a literal picture.</p>
+    <p id="notice" class="notice" role="status" aria-live="polite"></p>
+    <div class="examples" role="group" aria-label="Example scenes">
+      <span>Try an example:</span>
+      <button type="button" data-example="a harbour at dawn">Harbour at dawn</button>
+      <button type="button" data-example="a quiet moonlit garden">Moonlit garden</button>
+      <button type="button" data-example="a little house in a storm">House in a storm</button>
+    </div>
+    <div class="transport" role="group" aria-label="Playback">
+      <button type="button" id="pause" disabled>Pause</button>
+      <button type="button" id="step" disabled>Next mark</button>
+      <button type="button" id="replay" disabled>Replay</button>
+      <button type="button" id="again" disabled aria-describedby="again-help">Ask it again</button>
+      <button type="button" id="download" disabled>Download PNG</button>
+      <button type="button" id="copy-link" disabled>Copy link</button>
+      <button type="button" id="save" disabled>Save</button>
+    </div>
+    <p id="again-help" class="help again-help">Ask it again: the same words with a new seed. The variety comes from picking by the odds.</p>
+    <div class="intro">
+      <div id="explainer" class="explainer">
+        <p id="explainer-text">The decision-maker picks one mark at a time from menus, with odds for every choice. Code draws the marks.</p>
+      </div>
+      <div class="who" role="group" aria-label="Who decides">
+        <p id="badge-decider" class="badge">Decision-maker: Rules (authored tables)</p>
+        <p id="badge-note" class="badge-note" hidden></p>
+        <p class="badge slot"><span id="badge-model">Model: none loaded</span>
+          <button type="button" class="tip-btn" aria-label="About the model slot" aria-describedby="slot-tip">?</button>
+          <span id="slot-tip" class="tip" role="tooltip">Any Director can answer these questions; a model plugs in through the Director interface and is named here.</span></p>
+      </div>
+    </div>
     <fieldset id="decider" class="decider" aria-describedby="model-help">
       <legend>Who decides?</legend>
       <div class="seg" role="presentation">
@@ -66,35 +107,12 @@
       </div>
       <progress id="model-progress" max="1" value="0" hidden aria-label="Model download"></progress>
       <p id="model-status" class="help" role="status" aria-live="polite"></p>
+      <div id="model-marks-row" class="check-row" hidden>
+        <input type="checkbox" id="model-marks" aria-describedby="model-marks-help"><label for="model-marks">Let the model choose the colour of a few marks too</label>
+        <p id="model-marks-help" class="help">Gesture only, off by default. The model reads the painting so far and picks the colour role of about 4 marks in 30. It adds about 50 s per painting on WebAssembly, and its colours usually look worse than the rules'.</p>
+      </div>
       <p id="model-help" class="help">Select “Download and enable model” to start a one-time download of about 650 MB. Model turns on automatically when ready; your prompt stays on this device. A model-made Probability map can take several minutes.</p>
     </fieldset>
-    <div class="examples" role="group" aria-label="Example scenes">
-      <span>Try an example:</span>
-      <button type="button" data-example="a harbour at dawn">Harbour at dawn</button>
-      <button type="button" data-example="a quiet moonlit garden">Moonlit garden</button>
-      <button type="button" data-example="a little house in a storm">House in a storm</button>
-    </div>
-    <div class="frame" id="frame">
-      <canvas id="canvas" width="600" height="600" role="img" aria-label="Blank paper, waiting for a scene"></canvas>
-      <canvas id="overlay" class="overlay" width="32" height="32" aria-hidden="true" hidden></canvas>
-      <div id="cell-pop" class="cell-pop" hidden></div>
-    </div>
-    <p id="map-help" class="help map-help" hidden>Hover or tap a cell to see its odds. With the keyboard: focus the painting, then use the arrow keys; Escape hides the odds.</p>
-    <div class="progress-row">
-      <progress id="progress" max="30" value="0" aria-labelledby="progress-label"></progress>
-      <p id="progress-label" class="progress-label">Ready</p>
-    </div>
-    <div class="transport" role="group" aria-label="Playback">
-      <button type="button" id="pause" disabled>Pause</button>
-      <button type="button" id="step" disabled>Next mark</button>
-      <button type="button" id="cancel-run" hidden>Cancel</button>
-      <button type="button" id="replay" disabled>Replay</button>
-      <button type="button" id="again" disabled aria-describedby="again-help">Ask it again</button>
-      <button type="button" id="download" disabled>Download PNG</button>
-      <button type="button" id="copy-link" disabled>Copy link</button>
-      <button type="button" id="save" disabled>Save</button>
-    </div>
-    <p id="again-help" class="help again-help">Ask it again: the same words with a new seed. The variety comes from picking by the odds.</p>
     <details id="advanced" class="panel">
       <summary>Advanced Gesture options</summary>
       <fieldset>
@@ -114,7 +132,6 @@
         </div>
       </fieldset>
     </details>
-    <p id="notice" class="notice" role="status" aria-live="polite"></p>
   </section>
 
   <section id="odds" class="odds" aria-labelledby="odds-title" data-step="0">

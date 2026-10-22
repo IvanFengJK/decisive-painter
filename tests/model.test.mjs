@@ -54,7 +54,7 @@ test("model: capProbs lowers a dominant option to 0.85 and keeps the sum", () =>
   assert.ok(Math.abs(all[0] - 0.85) < 1e-12 && all.slice(1).every((v) => Math.abs(v - 0.05) < 1e-12));
 });
 
-test("model: per-mark questions stay with the rules", async () => {
+test("model: per-mark questions stay with the rules (marks off, the default)", async () => {
   const { d } = mock(2);
   const look = await chooseLook(new RuleDirector(), "a night market", 12);
   const a = [], b = [];

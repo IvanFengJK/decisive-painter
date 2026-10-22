@@ -135,16 +135,33 @@ function placeClass(o, suggested) {
 
 /**
  * The page's badge: exactly what decides. tab "gesture": a model decides the recipe and the marks follow the authored
- * weights; tab "map": a model answers a coarse grid that is interpolated (and maybe blended with the rules).
+ * weights, or (marks on) the recipe and the planned mark questions, with the rest of the marks by the authored weights
+ * and, after a model failure, the rules from that mark on; tab "map": a model answers a coarse grid that is
+ * interpolated (and maybe blended with the rules). `budget` (Gesture) lets the note count the planned marks.
  */
 export const MODEL_BADGE = "Decision-maker: Qwen3-0.6B (running in your browser)";
 export const RULES_BADGE = "Decision-maker: Rules (authored tables)";
-export function decisionBadge({ tab = "gesture", director, lookBy = "rules", coarse = 6, blend = false } = {}) {
+export const RECIPE_ONLY_NOTE = "recipe: model, marks: authored weights";
+const listWords = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+
+/** The Gesture note for a model Director whose markSummary(budget) says what it decides on the marks. */
+export function marksNote(m) {
+  if (!m || !m.questions?.length) return RECIPE_ONLY_NOTE;
+  const what = `recipe and the ${listWords(m.questions)} of`;
+  const rest = "model; everything else: authored weights";
+  if (m.fallback) {
+    if (!m.decided) return `${RECIPE_ONLY_NOTE} (${m.fallback.reason} at mark ${m.fallback.step}, so the rules took over)`;
+    return `${what} ${m.decided} of ${m.budget} marks: ${rest} (from mark ${m.fallback.step} on, the rules: ${m.fallback.reason})`;
+  }
+  return `${what} ${m.budget ? `${m.planned} of ${m.budget}` : "a few"} marks: ${rest}`;
+}
+
+export function decisionBadge({ tab = "gesture", director, lookBy = "rules", coarse = 6, blend = false, budget = null } = {}) {
   const kind = director?.kind;
   if (kind === "model") {
     return { decider: director.badge || MODEL_BADGE, note: tab === "map"
       ? `Model on a ${coarse}x${coarse} grid, interpolated${blend ? ", blended with rules" : ""}`
-      : "recipe: model, marks: authored weights" };
+      : marksNote(director.markSummary?.(budget)) };
   }
   if (kind === "rules" || !director) {
     const note = lookBy === "link" ? "opened from a link: drawn with the rules" : lookBy === "you" ? "recipe adjusted by you" : "";
