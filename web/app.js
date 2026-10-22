@@ -76,6 +76,7 @@ const app = {
   current: null, // the Gesture run's painter
   map: null, // the Map on screen: { field, id, palette, source }
   modelCells: null, // the model's coarse answers for the current words + recipe: { key, coarse, P }
+  asking: null, // the Map run whose cells the model is answering; the previous painting is dimmed meanwhile
   cell: null, // the selected map cell {x, y}
   lookTicket: 0,
   runs: 0,
@@ -444,6 +445,10 @@ function badgeForChoice() {
 // ------------------------------------------------------------------------------------------------ painting: shared
 function cancelRun() {
   if (app.run) app.run.cancelled = true;
+  if (app.asking) {
+    app.asking = null;
+    canvas.classList.remove("waiting");
+  }
   app.paused = false;
   $("pause").textContent = "Pause";
 }
@@ -601,10 +606,18 @@ async function mapField(token, ask) {
   }
   const director = slot.director;
   const n = app.coarse * app.coarse;
-  director.onQuestion = (k) => setMapProgress(k, n, k < n ? `The model is answering cell ${k + 1} of ${n} (${app.coarse}x${app.coarse} grid)...` : "All cells answered.");
-  director.shouldStop = () => token.cancelled;
+  const stop = () => token.cancelled;
+  const asking = (k) => `The model is answering cell ${k} of ${n} (${app.coarse}x${app.coarse} grid); the new map is drawn when it finishes...`;
+  director.onQuestion = (k) => {
+    if (!token.cancelled) setMapProgress(k, n, k < n ? asking(k + 1) : "All cells answered.");
+  };
+  director.shouldStop = stop;
   $("cancel-run").hidden = false;
-  setMapProgress(0, n, `The model is answering cell 1 of ${n} (${app.coarse}x${app.coarse} grid)...`);
+  setMapProgress(0, n, asking(1));
+  // the canvas still holds the previous painting until every cell is answered: dim it and keep its odds out of reach
+  app.asking = token;
+  canvas.classList.add("waiting");
+  hideCell();
   notice("");
   try {
     const t0 = performance.now();
@@ -616,8 +629,15 @@ async function mapField(token, ask) {
     notice(`The model stopped (${e instanceof DirectorError ? e.message : "an error"}). The rules' map is shown instead.`);
     return { field: rulesField(look, seed, grid), source: "rules" };
   } finally {
-    director.shouldStop = () => false;
-    $("cancel-run").hidden = true;
+    if (director.shouldStop === stop) { // a newer run may already have set its own hooks
+      director.shouldStop = () => false;
+      director.onQuestion = () => {};
+      $("cancel-run").hidden = true;
+    }
+    if (app.asking === token) {
+      app.asking = null;
+      canvas.classList.remove("waiting");
+    }
   }
 }
 
@@ -716,7 +736,7 @@ function hideCell() {
 
 /** The odds of one cell as bars over the six roles (swatch, name, percentage), with its coordinates. */
 function showCell(c) {
-  if (app.tab !== "map" || !app.map || !c) return;
+  if (app.tab !== "map" || !app.map || !c || app.asking) return;
   app.cell = c;
   const g = app.grid;
   const pop = $("cell-pop");

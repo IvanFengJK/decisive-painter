@@ -358,18 +358,19 @@ export class ModelDirector {
   async decideCells(state, questions) {
     const comp = COMPOSITIONS[state.look.composition];
     const context = cellContext(state.look, state.grid, comp.about);
+    const { shouldStop, onQuestion } = this; // this batch's hooks: a newer run setting its own must not revive this one
     const out = [];
     let ms = 0;
     for (let k = 0; k < questions.length; k++) {
-      if (this.shouldStop()) throw new DirectorError("cancelled");
-      this.onQuestion(k, questions.length);
+      if (shouldStop()) throw new DirectorError("cancelled");
+      onQuestion(k, questions.length);
       const t0 = Date.now();
       const p = await this.score(state.prompt, questions[k], context);
       ms += Date.now() - t0;
       out.push({ id: questions[k].id, probs: capProbs(p, this.cap) }); // no sharpening: the cell odds stay as read
       this.msPerQuestion = Math.round(ms / (k + 1));
     }
-    this.onQuestion(questions.length, questions.length);
+    onQuestion(questions.length, questions.length);
     return out;
   }
 

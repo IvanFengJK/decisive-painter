@@ -124,6 +124,7 @@ a { color: var(--fg); text-underline-offset: 3px; }
 .examples button { min-height: 34px; padding: 4px 10px; border-radius: 999px; font-size: 0.8125rem; }
 canvas { display: block; width: 100%; height: 100%; }
 canvas.pixelated { image-rendering: pixelated; image-rendering: crisp-edges; }
+canvas.waiting { opacity: 0.35; transition: opacity 0.3s; } /* the previous painting while the model answers the cells */
 
 .progress-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 progress {
@@ -358,8 +359,9 @@ h3.small { font-size: 0.9rem; margin: 12px 0 4px; }
   .odds-card { flex-basis: 172px; }
   .transport { justify-content: center; }
   .notice, .again-help, .example-note { text-align: center; }
-  .intro { flex-wrap: nowrap; }
-  .who { flex-direction: column; align-items: flex-end; flex: 0 0 auto; }
+  /* the explainer keeps a readable width; when the badges don't fit beside it (a long model badge), they wrap below */
+  .explainer { flex: 1 1 24ch; }
+  .who { flex-direction: column; align-items: flex-end; flex: 0 1 auto; max-width: 100%; margin-left: auto; }
   .sheet {
     margin: 0;
     border-radius: 14px;
