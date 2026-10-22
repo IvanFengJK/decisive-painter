@@ -95,9 +95,17 @@ export class Browser {
   }
 
   async close() {
+    // let Chrome exit on its own first: killed at once, its helper processes can still be writing into the profile
+    const exited = this.proc.exitCode !== null || this.proc.signalCode !== null ? Promise.resolve()
+      : new Promise((r) => this.proc.once("exit", r));
     try { await this.send("Browser.close"); } catch { /* already gone */ }
+    await Promise.race([exited, new Promise((r) => setTimeout(r, 5000))]);
     this.proc.kill("SIGKILL");
-    rmSync(this.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    try {
+      rmSync(this.dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    } catch (e) { // a leftover throwaway profile must not fail a run whose checks are done
+      console.warn(`warn could not remove ${this.dir}: ${e.code}`);
+    }
   }
 }
 
