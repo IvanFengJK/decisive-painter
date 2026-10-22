@@ -828,7 +828,6 @@ if (run("model")) {
       reading: document.getElementById('reading').textContent, notice: document.getElementById('notice').textContent, label: document.getElementById('progress-label').textContent })`);
     const lookOK = (p) => p.eval(`Object.entries(${js(LOOK_FIELDS)}).every(([f, o]) => o.includes(document.getElementById('look-' + f).value))`);
     const loaded = (p) => p.waitFor("/^Loaded|not available/.test(document.getElementById('model-status').textContent)", 900000);
-    const decider = (p, v) => p.eval(`(() => { const r = document.querySelector('input[name=decider][value=${v}]'); r.checked = true; r.dispatchEvent(new Event('change')); return 1; })()`);
     // peak memory: the RSS of every Chromium process (browser, renderer, workers' host), sampled from outside every 2 s
     let peakMb = 0;
     const memTimer = setInterval(() => {

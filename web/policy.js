@@ -11,6 +11,7 @@ export const MAX_CHARS = 80;
 export const BLOCK_MESSAGE = "I can't paint that one. Try a different scene.";
 
 // ------------------------------------------------------------------------------------------------ L0 hygiene
+// eslint-disable-next-line no-misleading-character-class -- deliberately lists invisible and combining characters
 const INVISIBLE = /[\p{Cc}\p{Cf}͏ᅟᅠ឴឵᠋-᠏ㅤﾠ︀-️]/gu;
 const BIDI = /[؜‎‏‪-‮⁦-⁩]/u;
 const MARKUP = /[<>]|&#|&[a-z]+;|%3c|%3e|javascript\s*:|vbscript\s*:|data\s*:|\bon[a-z]+\s*=|\{\{|\}\}|\$\{|`|\\u[0-9a-f]{4}|\\x[0-9a-f]{2}/i;
