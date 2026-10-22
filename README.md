@@ -96,6 +96,17 @@ node tests/og-image.mjs               # regenerate web/og-image.jpg (the 1200x63
 node tests/sheet.mjs 8                # contact sheet of 8 scenes x 5 views in Rules mode (out/shots/contact-sheet.png)
 ```
 
+Linting uses dev-only tools (the site itself still has no dependencies and no build step):
+
+```sh
+npm ci && npm run lint                # ESLint over web/ and tests/
+uvx ruff check                        # Ruff over harness/ (or: pipx run ruff check)
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, the node tests, a harness render and `browser.mjs quick` on
+every pull request and every push to `main`. Deploys stay with Vercel's Git integration: a preview for every branch,
+production for `main`.
+
 Model mode end to end needs the real model. Make a verified local mirror of the pinned files once (about 650 MB; the
 page's requests to the model hosts are rerouted to it by the test, unseen by the page), then:
 

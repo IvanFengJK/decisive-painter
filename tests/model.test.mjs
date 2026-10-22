@@ -75,7 +75,7 @@ test("model: instruction-like prompts still give a probability vector over the f
 });
 
 test("model: malformed scorer output fails with a readable message", async () => {
-  const bad = { "not numbers": async (t, n) => Array(n).fill(NaN), "too few": async (t, n) => [1], "no list": async () => "A",
+  const bad = { "not numbers": async (t, n) => Array(n).fill(NaN), "too few": async () => [1], "no list": async () => "A",
     "a string": async (t, n) => Array(n).fill("1"), "throws": async () => { throw new Error("boom"); } };
   for (const [name, scorer] of Object.entries(bad)) {
     const d = new ModelDirector({ scorer, info: INFO });

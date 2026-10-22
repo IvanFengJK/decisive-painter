@@ -1,0 +1,7 @@
+# The harness is a frozen reference renderer written in a dense style; only check for real bugs (pyflakes and the
+# default pycodestyle errors), not layout.
+target-version = "py313"
+include = ["harness/**/*.py"]
+
+[lint]
+ignore = ["E702", "E731", "E402"]
