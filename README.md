@@ -62,7 +62,9 @@ Node 22 or newer. From the repository root:
 node --test tests/*.test.mjs          # Director and cell contracts, fields, Impasto checks, guardrails, share links (seconds)
 node tests/guard-eval.mjs heldout     # guardrail lists on a test set: dev, heldout or heldout2
 node tests/browser.mjs                # headless Chromium: both tabs, every style, determinism, share links, performance,
-                                      # network, CSP, accessibility (about 15 minutes; writes out/)
+                                      # network, CSP, accessibility (about 10 minutes without the model,
+                                      # about 20 with MODEL_MIRROR set; writes out/). Keep it for release checks.
+node tests/browser.mjs quick          # everyday check: determinism and share links only (about 3 minutes)
 node tests/browser.mjs t1             # one section: t1 t2 t3 t5 t6 t9 model
 node tests/sheet.mjs 8                # contact sheet of 8 scenes x 5 views in Rules mode (out/shots/contact-sheet.png)
 ```

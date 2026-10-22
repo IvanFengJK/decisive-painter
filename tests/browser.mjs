@@ -6,6 +6,7 @@
 //   t6    performance: Impasto composite at 1x and 4x, 48x48 field, long tasks per style
 //   t9    network (zero requests in Rules), CSP, offline, storage, gallery, endpoint, accessibility, reduced motion
 //   model Model mode end to end with the real model (MODEL_MIRROR=<dir> or MODEL_LIVE=1; skipped otherwise)
+//   quick t2 + t5 only (about 3 minutes); the full run (about 20 minutes with the model) is for release checks
 // Uses the installed Chromium through tests/lib/cdp.mjs. Writes out/shots/*.png and out/browser-results*.json; exits 1 if
 // any check fails.
 import { createHash } from "node:crypto";
@@ -36,7 +37,8 @@ function check(name, ok, detail = "") {
   if (!ok) failed++;
   console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail ? ` (${typeof detail === "string" ? detail : JSON.stringify(detail)})` : ""}`);
 }
-const run = (name) => only === "all" || only === name;
+const QUICK = ["t2", "t5"]; // `quick`: determinism and share links only (about 3 minutes), for everyday changes
+const run = (name) => only === "all" || only === name || (only === "quick" && QUICK.includes(name));
 
 const { server, url } = await serve(`${ROOT}web`);
 const browser = await Browser.launch();
