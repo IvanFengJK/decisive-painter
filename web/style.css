@@ -77,8 +77,12 @@ a { color: var(--fg); text-underline-offset: 3px; }
 .layout { padding: 0 16px; }
 
 /* ---------------------------------------------------------------------------------------- the stage */
-/* Order (DOM = visual = Tab order): the painting first, then the tabs, the scene box with Paint and the seed, then
-   playback, then what decides (explainer, badge, Rules | Model). On a phone the painting and Paint share the first screen. */
+/* Order (DOM = visual = Tab order): the painting first, then the short explanation, the tabs and the scene box with
+   Paint, then what to do next (examples, Ask it again, Download, Copy link), then the collapsed Controls (seed,
+   playback, Save), then what decides (explainer, badge, Rules | Model). On a phone the painting and Paint share the
+   first screen. */
+.core-note { margin: 6px 0 0; font-size: 0.875rem; line-height: 1.35; }
+.core-note #mode-note { color: var(--muted); }
 .intro { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 16px; margin: 16px 0 0; }
 .explainer { font-size: 0.9rem; line-height: 1.35; }
 .explainer p { margin: 0; }
@@ -112,6 +116,8 @@ a { color: var(--fg); text-underline-offset: 3px; }
 .stage > .prompt-row { margin: 0; }
 .seed-row.seed-near-prompt { margin: 6px 0 0; grid-template-columns: 42px minmax(90px, 160px) 1fr; gap: 4px 8px; }
 .seed-near-prompt .help { grid-column: 1 / -1; }
+.controls .seed-row { grid-template-columns: 42px minmax(90px, 160px) 1fr; }
+.controls .transport-more { margin-top: 12px; }
 .stage > #prompt-help { margin-top: 5px; }
 .examples { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0; color: var(--muted); font-size: 0.8125rem; }
 .examples span { margin-right: 2px; }
@@ -156,6 +162,8 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
   flex: 0 0 78%; scroll-snap-align: start; padding: 10px 12px; position: relative;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
 }
+/* while a Gesture painting is drawing, the odds panel's cards get the accent border */
+.odds.live .odds-card { border-color: var(--accent); }
 .odds-card h3 { margin: 0 0 6px; font-size: 0.875rem; }
 .odds-by { padding: 0 5px; border: 1px solid var(--accent); border-radius: 4px; color: var(--accent); font-size: 0.6875rem; font-weight: 650; }
 .odds-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
