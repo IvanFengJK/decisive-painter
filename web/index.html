@@ -37,6 +37,11 @@
           <span id="slot-tip" class="tip" role="tooltip">Any Director can answer these questions; a model plugs in through the Director interface and is named here.</span></p>
       </div>
     </div>
+    <p class="mode-label">Choose how it draws</p>
+    <div class="tabs" role="tablist" aria-label="Way of drawing">
+      <button type="button" role="tab" id="tab-gesture" aria-selected="true" aria-controls="panel-gesture">Gesture</button>
+      <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">Probability map</button>
+    </div>
     <form id="prompt-form" class="prompt-row" novalidate>
       <label for="prompt" class="sr-only">Scene to paint</label>
       <input id="prompt" name="prompt" type="text" maxlength="80" autocomplete="off" spellcheck="true"
@@ -124,15 +129,10 @@
   </section>
 
   <section class="sheet" aria-label="Controls">
-    <p class="mode-label">Choose how it draws</p>
-    <div class="tabs" role="tablist" aria-label="Way of drawing">
-      <button type="button" role="tab" id="tab-gesture" aria-selected="true" aria-controls="panel-gesture">Gesture</button>
-      <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">Probability map</button>
-    </div>
-
     <p id="reading" class="reading" aria-live="polite"></p>
 
     <div id="panel-gesture" role="tabpanel" aria-labelledby="tab-gesture" class="panel-tab">
+      <h2 class="panel-title">Gesture settings</h2>
       <fieldset class="styles" aria-describedby="style-about-gesture">
         <legend>Style</legend>
         <div class="seg seg-styles">
@@ -151,6 +151,7 @@
     </div>
 
     <div id="panel-map" role="tabpanel" aria-labelledby="tab-map" class="panel-tab" hidden>
+      <h2 class="panel-title">Probability map settings</h2>
       <fieldset class="styles" aria-describedby="style-about-map">
         <legend>Style</legend>
         <div class="seg seg-styles">

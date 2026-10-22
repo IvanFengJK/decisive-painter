@@ -256,6 +256,7 @@ legend { font-weight: 600; padding: 0; margin-bottom: 6px; }
 .load-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .load-row button { flex: 1 1 auto; text-align: left; }
 .panel-tab[hidden] { display: none; }
+.panel-title { margin: 14px 0 4px; font-size: 1rem; } /* names the mode on phones, where the tabs are far above */
 .frame { position: relative; }
 .overlay { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges;
   opacity: 0.82; pointer-events: none; }
