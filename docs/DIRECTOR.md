@@ -58,7 +58,8 @@ Last marks: 21. block at left wing, secondary; 22. ...
 
 The page's badge is read from the Director that decided the painting on screen (`decisionBadge` in `director.js`):
 "Decision-maker: Rules (authored tables)", "Decision-maker: Qwen3-0.6B (running in your browser)" with a note saying what
-the model decided ("recipe: model, marks: authored weights" on Gesture; "Model on a 6x6 grid, interpolated" or "...,
+the model decided ("recipe and the colour of 4 of 30 marks: model; everything else: authored weights" on Gesture, with
+"(from mark N on, the rules: <reason>)" when the model failed during the painting; "Model on a 6x6 grid, interpolated" or "...,
 blended with rules" on the map), or "Decision-maker: <name>" for any other Director. A second line names the model slot
 ("Model: none loaded", or the loaded model and whether it decided this painting). `directorBadge` (tested in
 `tests/badge.test.mjs` with a mock named "Mock model (test)") gives the same lines from a Director alone.
@@ -69,33 +70,15 @@ blended with rules" on the map), or "Decision-maker: <name>" for any other Direc
   expects `{ "answers": [{ "id": "...", "probs": {...} }] }`. 20 s timeout, no credentials, no referrer. The page's
   CSP allows `connect-src` to the same origin and to `http://localhost:*` / `http://127.0.0.1:*` only; to use a remote
   server, add its origin to the CSP in `index.html`.
-- `ModelDirector` (Model mode, below): the six recipe questions and the map's cell questions; per-mark questions go to
-  the RuleDirector.
+- `ModelDirector` (Model mode, below): the six recipe questions, the colour role of a few planned marks, and the map's
+  cell questions; every other per-mark question goes to the RuleDirector.
 - `MockDirector` (`field.js`, tests only): uniform odds for any question.
 - The "Be the director" mode (a `HumanDirector`) was removed in v2.
 
-### Example: a WebGPU model in the browser
+### WebGPU
 
-```js
-// director-webgpu.js (sketch; see the stub there)
-export class WebGpuDirector {
-  name = "Small model on this device (WebGPU)";
-  kind = "model";
-  async init() {
-    if (!navigator.gpu) throw new DirectorError("this browser has no WebGPU");
-    this.session = await loadModelFromSameOrigin("./model/"); // vendored runtime + weights, same origin
-  }
-  async decide(state, questions) {
-    const h = await this.session.prefill(state.text);          // one pass over the state per mark
-    return Promise.all(questions.map(async (q) => ({
-      id: q.id,
-      probs: await this.session.scoreOptions(h, q.text, q.options ?? ["no", "yes"], q.about),
-    })));
-  }
-}
-```
-
-Register it in `app.js` as a third choice under Advanced and import it lazily so other visitors download nothing.
+There is no separate WebGPU Director: `ModelDirector` takes any scorer, and the worker behind it
+(`web/model-worker.js`) picks the backend. See "Backend" below.
 
 ### Example: a Jev-compatible server
 
@@ -143,11 +126,31 @@ question it was never trained on.
   recipe, and "Ask it again" draws a new one. In Rules mode the recipe is still a top pick, exactly as before.
 - **Answer format.** Answers use the ordinary Answer format, so the harness validates them like any Director's.
   Malformed scores (not numbers, wrong length) stop with a readable message.
-- **Backend.** WebAssembly with the int8 build (about 650 MB), always, in a module **Worker** (`web/model-worker.js`)
-  so the page's main thread stays free while the model reads. The WebGPU q4f16 build of earlier rounds is no longer
+- **Backend.** The int8 build (about 650 MB) in a module **Worker** (`web/model-worker.js`), so the page's main
+  thread stays free while the model reads. The worker tries WebGPU first and keeps it only if there is a hardware
+  adapter (a software adapter such as SwiftShader is about 12x slower than WebAssembly and is skipped), the session
+  starts, and a fixed test question gives the expected letter with every probability within 0.15 of the WebAssembly
+  reference. Otherwise the loader terminates that worker and starts WebAssembly in a fresh one; the files come from
+  the Cache API. `info.backend` is the backend actually used ("WebGPU" or "WASM") and `info.fallback` a plain reason
+  when WebGPU was not used. The pinned onnxruntime-web build has the WebGPU execution provider in the same
+  `.asyncify.wasm`, so no other file or host is needed. Its WebGPU provider has no kernels for the int8 build's
+  `MatMulInteger` and `DynamicQuantizeLinear` nodes, which run on the CPU, so the speed-up is partial (one laptop: a
+  412-token prompt 5.2 s on WebGPU against 17.7 s on WebAssembly). The WebGPU q4f16 build of earlier rounds is not
   used: 4-bit quantisation changed the top picks too often in our tests, and int8 did not.
-- **Cancel.** Loading can be cancelled (the worker is terminated); a long batch of questions stops between questions
-  when the page sets `shouldStop`.
+- **Scorer.** `scorer(text, n, { prefix }?)` returns the letter logits for the full prompt `text`. `prefix` is a hint
+  that several calls share that start; the worker can reuse its key/value cache (`loadModel({ prefixCache: true })`),
+  but this is off: the int8 build quantises activations over the whole input of each pass, so a split prompt gives
+  different logits (up to 0.36 in averaged probability, the top colour changed on 3 of 4 marks) for about 35% less time.
+- **Gesture marks.** With `marks` on (the page turns it on), the model answers the `colour` question of the marks in
+  `modelMarkPlan(budget)`: one mark in each phase after the backdrop, two in a phase of 15 marks or more, mid-phase (4
+  of 30 marks, 5 of 50); a pure function of the budget. It reads a short context instead of the full state text: the
+  recipe in words, the mark and phase, the colour roles in the top, middle and bottom of the 5x5 readback, and the last
+  two marks in menu words. Both option orders are averaged; the drawing distribution is the recipe's
+  (sharpened, capped at 0.85) and the harness draws from it with the seed. `markLog` says which questions of which mark
+  the model answered. If a call fails or returns unusable scores, the rules answer that mark and the rest of the
+  painting, with one fixed reason; cancelling is not a failure.
+- **Cancel.** Loading can be cancelled (the worker is terminated); a long batch of questions, and the model's marks,
+  stop between questions when the page sets `shouldStop`.
 - **Download.** It happens only after the click. The model files are kept with the Cache API when storage works, and
   loading still works without storage. Any failure (no backend, out of memory, network) shows a readable message and
   leaves Rules on.

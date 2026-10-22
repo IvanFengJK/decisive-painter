@@ -9,7 +9,7 @@ import { GRID_DEFAULT, GRID_MAX, GRID_MIN, cellProbs, cellQuestions, cellState, 
   fieldFromCoarse, mapId, pixelMap, rulesField } from "./field.js";
 import { DisabledGuard, runGuard } from "./guard.js";
 import { MapImpasto } from "./impasto.js";
-import { MODEL_QUESTIONS, ModelSlot } from "./model-director.js";
+import { MODEL_QUESTIONS, ModelSlot, modelMarkPlan } from "./model-director.js";
 import { BLOCK_MESSAGE, check } from "./policy.js";
 import { LOOK_FIELDS, readPrompt } from "./recipes.js";
 import { PIXEL_N, ROLES, enginePalette, hexRgb } from "./render.js";
@@ -25,10 +25,13 @@ const ctx = canvas.getContext("2d");
 const overlay = $("overlay");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const PACE_MS = 90; // pause between marks so the painting can be watched (0 with reduced motion)
+// A plain visit (no painting link) opens on this scene, painted by the rules exactly as typing it and pressing Paint with
+// a blank seed would (its automatic seed, 30 marks, Brush), but without pacing. No model, no network, no link written.
+const EXAMPLE = "a field of sunflowers at noon";
 
 const rules = new RuleDirector();
 // Model mode: nothing of the model (not even its loader) is fetched until the visitor presses "Download and enable model".
-const slot = new ModelSlot((opts) => import("./model-loader.js").then((m) => m.loadModel(opts)));
+const slot = new ModelSlot((opts) => import("./model-loader.js").then((m) => m.loadModel(opts)), { marks: true });
 const guard = new DisabledGuard();
 
 const EXPLAINER = {
@@ -65,6 +68,7 @@ const app = {
   cell: null, // the selected map cell {x, y}
   lookTicket: 0,
   runs: 0,
+  example: null, // the example's words while the startup example (in any tab or style) is what is on screen
 };
 
 // ------------------------------------------------------------------------------------------------ small helpers
@@ -101,12 +105,19 @@ function updateEstimate() {
   const per = app.msPerMark[gestureStyle()] + (reduceMotion.matches ? 0 : PACE_MS);
   const s = Math.max(1, Math.round((app.budget * per) / 1000));
   $("estimate").textContent = slot.mode === "model" && !useEndpoint()
-    ? `The model reads your words first (six questions, about ${fmtMin(6 * (slot.director?.msPerQuestion || 10000))}); then about ${s} second${s === 1 ? "" : "s"} for the marks.`
+    ? `The model reads your words first (six questions, about ${fmtMin(6 * (slot.director?.msPerQuestion || 10000))}); then about ${s} second${s === 1 ? "" : "s"} for the marks${marksEstimate()}.`
     : `About ${s} second${s === 1 ? "" : "s"} on this device (measured here).`;
   const n = app.coarse * app.coarse;
   $("map-estimate").textContent = slot.mode === "model"
     ? `Model mode: ${n} questions on a ${app.coarse}x${app.coarse} grid, about ${fmtMin(n * (slot.director?.msPerQuestion || 10000))} on this device.`
     : `The rules fill every cell at once (about ${Math.max(1, Math.round(app.mapMs[app.style.map] / 1000))} s with this style).`;
+}
+
+/** The model's share of the marks, for the Gesture estimate: ", plus about 50 s while it chooses the colour of 4 of them". */
+function marksEstimate() {
+  const d = slot.director;
+  if (!d?.marks) return "";
+  return `, plus about ${fmtMin(d.estimateMarksMs(app.budget))} while it chooses the colour of ${modelMarkPlan(app.budget).length} of them`;
 }
 
 /** The model's map settings show only on the Probability map tab in Model mode; call after a tab or decider change. */
@@ -210,12 +221,27 @@ function blankCanvas() {
 function describeCanvas(done, step) {
   const l = app.look;
   if (!done) {
-    canvas.setAttribute("aria-label", app.tab === "map" ? "Probability map in progress" : `Painting in progress, mark ${step} of ${app.budget}`);
+    const what = app.tab === "map" ? "Probability map in progress" : `Painting in progress, mark ${step} of ${app.budget}`;
+    canvas.setAttribute("aria-label", app.example ? `Example: ${what.toLowerCase()}` : what);
     return;
   }
-  canvas.setAttribute("aria-label", app.tab === "map"
+  const what = app.tab === "map"
     ? `Abstract probability map, ${app.grid} by ${app.grid} cells: ${l.mood} mood, ${l.hue} family, ${l.key} key, ${l.composition} composition, ${STYLE_INFO.map[app.style.map].label} style`
-    : `Abstract painting in ${app.budget} marks: ${l.mood} mood, ${l.hue} family, ${l.key} key, ${l.composition} composition, ${STYLE_INFO.gesture[gestureStyle()].label} style`);
+    : `Abstract painting in ${app.budget} marks: ${l.mood} mood, ${l.hue} family, ${l.key} key, ${l.composition} composition, ${STYLE_INFO.gesture[gestureStyle()].label} style`;
+  canvas.setAttribute("aria-label", app.example ? `${exampleText(app.example)} ${what}.` : what);
+}
+
+const exampleText = (words) => `An example painting: ${words}. Type your own scene and press Paint.`;
+
+/**
+ * Marks the startup example as what is on screen (words) or not (null): the caption under the painting. The caption is
+ * not a live region, so nothing is announced at load; the canvas label says the same.
+ */
+function setExample(words) {
+  app.example = words || null;
+  const el = $("example-note");
+  el.textContent = words ? exampleText(words) : "";
+  el.hidden = !words;
 }
 
 // ------------------------------------------------------------------------------------------------ the gesture panels
@@ -298,25 +324,32 @@ function oddsItem(label, p, { chosen = false, option = "", other = false, swatch
 }
 
 /** One card per question; the numbers are the decision-maker's answers as validated by the harness (no other maths). */
-function renderOdds({ step, budget, qs, P, chosen }) {
+function renderOdds({ step, budget, qs, P, chosen, byModel = [] }) {
   const box = $("odds-cards");
   box.replaceChildren();
   for (const q of qs) {
     const card = document.createElement("div");
     card.className = "odds-card";
     card.dataset.q = q.id;
+    card.dataset.by = byModel.includes(q.id) ? "model" : "rules";
     card.setAttribute("role", "group");
     card.setAttribute("aria-labelledby", `odds-h-${q.id}`);
     const h = document.createElement("h3");
     h.id = `odds-h-${q.id}`;
     h.textContent = Q_LABEL[q.id] || q.id;
+    if (byModel.includes(q.id)) {
+      const t = document.createElement("span");
+      t.className = "odds-by";
+      t.textContent = "model";
+      h.append(" ", t);
+    }
     const ol = document.createElement("ol");
     ol.className = "odds-list";
     for (const r of oddsRows(optionsOf(q), P[q.id], chosen[q.id])) ol.appendChild(oddsItem(r.label, r.p, r));
     card.append(h, ol);
     box.appendChild(card);
   }
-  $("odds-mark").textContent = `for mark ${step} of ${budget}`;
+  $("odds-mark").textContent = `for mark ${step} of ${budget}${byModel.length ? ` (the model chose the ${byModel.map((id) => (Q_LABEL[id] || id).toLowerCase()).join(" and ")})` : ""}`;
   $("odds").dataset.step = String(step);
 }
 
@@ -360,6 +393,7 @@ function buildLookFields() {
       if (!app.look) return;
       app.look = { ...app.look, [f]: sel.value };
       app.lookBy = "you";
+      setExample(null);
       applyAccent(app.look);
       clearTimeout(lookTimer);
       lookTimer = setTimeout(() => repaint(), 250);
@@ -389,7 +423,7 @@ function showBadge(director, extra = {}) {
 function badgeForChoice() {
   if (app.painted) return;
   try {
-    showBadge(currentDirector(), { coarse: app.coarse, blend: app.blend });
+    showBadge(currentDirector(), { coarse: app.coarse, blend: app.blend, budget: app.budget });
   } catch {
     showBadge({ name: "Your endpoint (no valid URL yet)", kind: "endpoint" });
   }
@@ -433,7 +467,9 @@ function endRun(token) {
 }
 
 function markDone(token) {
-  document.body.dataset.done = String(token.id); // lets tests wait for this run
+  // lets tests wait for this run; the startup example has its own marker, so it never passes for a visitor's painting
+  if (token.example) document.body.dataset.example = "painted";
+  else document.body.dataset.done = String(token.id);
 }
 
 /** Repaint the current recipe in the current tab (style, grid or look changed). */
@@ -445,15 +481,16 @@ function repaint(trigger = "auto") {
 
 // ------------------------------------------------------------------------------------------------ painting: Gesture
 async function waitTurn(token) {
-  if (!reduceMotion.matches) await sleep(PACE_MS);
+  if (!reduceMotion.matches && !token.example) await sleep(PACE_MS); // the startup example is not paced
   else await sleep(0); // always give the page a turn between marks
   while (app.paused && !app.stepOnce && !token.cancelled) await sleep(40);
   app.stepOnce = false;
 }
 
-async function startGesture() {
+async function startGesture({ example = false } = {}) {
   if (!app.look) return;
   const token = newRun();
+  token.example = example;
   let director;
   try {
     director = currentDirector();
@@ -462,16 +499,30 @@ async function startGesture() {
     endRun(token);
     return;
   }
-  // In Model mode the model only chooses the recipe. A recipe it did not choose (the rules', a link's, or one adjusted
-  // by hand) is painted by the rules alone, and the badge says so.
+  // In Model mode the model chooses the recipe and the colour of a few planned marks. A recipe it did not choose (the
+  // rules', a link's, or one adjusted by hand) is painted by the rules alone, and the badge says so.
   if (director.kind === "model" && app.lookBy !== "model") {
     director = rules;
     notice("This recipe was not chosen by the model, so the rules paint it. Press Paint to let the model choose the recipe.");
   }
   const opts = { prompt: app.prompt || "(a shared painting; no words)", look: app.look, seed: app.seed, budget: app.budget,
     skin: gestureStyle(), director, mode: app.pick, tick: () => sleep(0) };
-  app.painted = { tab: "gesture", director };
-  showBadge(director);
+  const modelMarks = director.kind === "model" && director.marks;
+  const stop = () => token.cancelled;
+  if (modelMarks) {
+    director.resetMarks(app.budget);
+    director.shouldStop = stop;
+    director.onMarkQuestion = (k, n, step) => {
+      if (k < n && !token.cancelled) $("progress-label").textContent = `The model is choosing the colour of mark ${step} (${k + 1} of ${n})...`;
+    };
+    director.onMarkFallback = (step, reason) => {
+      notice(`From mark ${step} on the rules paint the marks: ${reason}.`);
+      showBadge(director, { budget: app.budget });
+    };
+    $("cancel-run").hidden = false;
+  }
+  app.painted = { tab: "gesture", director, budget: app.budget };
+  showBadge(director, { budget: app.budget });
   setRunning(true);
   setProgress(0);
   overlay.hidden = true;
@@ -488,15 +539,20 @@ async function startGesture() {
       draw(s.painter.view());
       compute += performance.now() - t0;
       showState(s);
-      renderOdds({ step: s.step, budget: app.budget, qs: s.qs, P: s.P, chosen: s.d });
+      renderOdds({ step: s.step, budget: app.budget, qs: s.qs, P: s.P, chosen: s.d,
+        byModel: modelMarks ? director.lastMark?.byModel ?? [] : [] });
       setProgress(s.step, s.phase);
       describeCanvas(false, s.step);
       await waitTurn(token);
       if (token.cancelled) return;
       t0 = performance.now();
     }
+    if (modelMarks) {
+      compute -= director.markMs; // the per-mark estimate is for drawing; the model's time is estimated on its own
+      showBadge(director, { budget: app.budget });
+    }
     if (director.kind !== "endpoint") app.msPerMark[gestureStyle()] = Math.round(0.5 * app.msPerMark[gestureStyle()] + (0.5 * compute) / app.budget);
-    history.replaceState(null, "", shareOf());
+    if (!app.example) history.replaceState(null, "", shareOf()); // the example leaves the address bar alone
     markDone(token);
     setProgress(app.budget);
     describeCanvas(true);
@@ -506,6 +562,10 @@ async function startGesture() {
     if (token.cancelled) return;
     notice(e instanceof DirectorError ? `The director stopped: ${e.message}.` : "Something went wrong while painting.");
   } finally {
+    if (modelMarks && director.shouldStop === stop) { // a newer run may already have set its own hooks
+      director.shouldStop = () => false;
+      director.onMarkQuestion = director.onMarkFallback = () => {};
+    }
     endRun(token);
   }
 }
@@ -569,7 +629,7 @@ async function startMap(trigger = "auto") {
   const ok = await renderMap(token);
   if (!ok) return;
   app.mapMs[app.style.map] = Math.round(0.5 * app.mapMs[app.style.map] + 0.5 * (performance.now() - t0));
-  history.replaceState(null, "", shareOf());
+  if (!app.example) history.replaceState(null, "", shareOf());
   setMapProgress(1, 1, `Finished: ${grid} x ${grid} cells`);
   describeCanvas(true);
   updateEstimate();
@@ -802,6 +862,7 @@ function setTab(tab, { paint = true } = {}) {
 // ------------------------------------------------------------------------------------------------ prompt, recipe, seed
 function showBlocked(message) {
   cancelRun();
+  setExample(null);
   app.look = null;
   app.map = null;
   app.painted = null;
@@ -877,6 +938,7 @@ async function onPaint(ev) {
   fillLookFields(app.look);
   applyAccent(app.look);
   setReading(readingFor(info));
+  setExample(null); // the visitor's own painting replaces the example (kept on screen while the recipe was chosen)
   if (!info.known && app.lookBy !== "model") $("look").open = true;
   repaint("paint");
 }
@@ -884,6 +946,7 @@ async function onPaint(ev) {
 /** Ask it again: the same words with a fresh random seed, so only the seeded picks from the odds change. */
 function askAgain() {
   if (!app.look) return;
+  setExample(null); // a new seed: the visitor's own variation, no longer the example
   const a = new Uint32Array(1);
   crypto.getRandomValues(a);
   app.seed = a[0] % (SEED_MAX + 1);
@@ -948,7 +1011,7 @@ async function loadModelClicked() {
     btn.textContent = "Model enabled";
     $("decider-model").disabled = false;
     setRadio("decider", "model");
-    $("model-status").textContent = `Loaded ${i.name} (${i.dtype}, ${i.mb} MB, ${i.backend}) in ${i.loadSeconds} s${i.cached ? "; kept in this browser's cache" : ""}. Model mode is on.`;
+    $("model-status").textContent = `Loaded ${i.name} (${i.dtype}, ${i.mb} MB, ${i.backend}) in ${i.loadSeconds} s${i.cached ? "; kept in this browser's cache" : ""}${i.fallback ? `; WebGPU not used: ${i.fallback}` : ""}. Model mode is on.`;
     updateEstimate();
     afterDeciderChange();
   } else {
@@ -966,8 +1029,9 @@ function afterDeciderChange() {
   updateEstimate();
   syncModeControls();
   if (!$("prompt").value.trim() || !app.look) {
-    app.painted = null;
-    badgeForChoice();
+    // the painting on screen (the example or a link, both drawn by the rules) keeps its badge until Paint
+    if (app.painted) showBadge(app.painted.director, app.painted);
+    else badgeForChoice();
     return;
   }
   if (app.tab === "gesture") onPaint();
@@ -1110,6 +1174,7 @@ async function downloadRecipe(e) {
 /** Open a saved or shared recipe: always with the rules (a link never carries model output). */
 function openRecipe(r, from = "link") {
   cancelRun();
+  setExample(null);
   app.look = r.look;
   app.lookBy = "link";
   app.seed = r.seed;
@@ -1147,17 +1212,46 @@ function openRecipe(r, from = "link") {
   repaint();
 }
 
+/** Opens the painting link in the address bar; true when it did (false for no link, an in-page anchor or a bad link). */
 function openFromHash() {
-  if (!location.hash.includes("=")) return; // in-page anchors such as the skip link are not painting links
+  if (!location.hash.includes("=")) return false; // in-page anchors such as the skip link are not painting links
   let r;
   try {
     r = decodeShare(location.hash);
   } catch (e) {
     notice(e instanceof ShareError ? e.message : "This painting link cannot be read.");
     history.replaceState(null, "", location.pathname + location.search);
+    return false;
+  }
+  if (!r) return false;
+  openRecipe(r);
+  return true;
+}
+
+/**
+ * The startup example: the rules choose the recipe for EXAMPLE and paint it with its automatic seed, through the same
+ * chooseLook + startGesture path as a Paint press. The prompt box stays empty. Anything the visitor starts first (Paint,
+ * an example button, a link) wins: the look ticket drops this one, and newRun() cancels it if it is already painting.
+ */
+async function startExample() {
+  const ticket = ++app.lookTicket;
+  let look;
+  try {
+    look = await chooseLook(rules, EXAMPLE, app.budget);
+  } catch {
     return;
   }
-  if (r) openRecipe(r);
+  if (ticket !== app.lookTicket || app.look) return;
+  app.prompt = EXAMPLE;
+  app.look = look;
+  app.lookBy = "rules";
+  app.seed = seedFor(EXAMPLE);
+  app.seedFromText = true;
+  fillLookFields(look);
+  applyAccent(look);
+  setExample(EXAMPLE);
+  if (app.tab === "map") startMap();
+  else startGesture({ example: true });
 }
 
 // ------------------------------------------------------------------------------------------------ wiring
@@ -1292,6 +1386,8 @@ function wire() {
 
 /** A short offscreen painting at load measures this device's speed for the estimate (no network, no storage). */
 async function benchmark() {
+  // not while a painting runs (the startup example, a link or a quick first Paint): it would slow both and skew the numbers
+  for (let waited = 0; app.run && waited < 15000; waited += 200) await sleep(200);
   const look = readPrompt("a harbour at dawn").look;
   for (const skin of ["brush", "sketch", "pixel"]) {
     let ms = 0;
@@ -1318,6 +1414,8 @@ wire();
 setTab("gesture", { paint: false });
 badgeForChoice();
 updateEstimate();
-openFromHash();
+// A painting link shows that painting, never the example first. The example starts on the next frame, so the page is
+// drawn (paper, tabs, scene box) before its first mark and the start-up never runs as one long task.
+if (!openFromHash()) nextFrame().then(startExample);
 setTimeout(benchmark, 300);
 

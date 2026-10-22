@@ -1,4 +1,6 @@
-// The exact files Model mode downloads after "Download and enable model" on the WASM path, with their SHA-256. The browser tests can
+// The exact files Model mode downloads after "Download and enable model", with their SHA-256. The WebGPU path fetches the
+// same files: the asyncify runtime below holds both the WebAssembly and the WebGPU execution providers, and both
+// backends use the int8 weights (checked with tests/webgpu-bench.mjs: nothing else is requested). The browser tests can
 // serve them from a local mirror (MODEL_MIRROR=<dir>) so each run does not download 630 MB again; make the mirror with
 //   node tests/model-files.mjs <dir>
 import { createHash } from "node:crypto";

@@ -24,7 +24,7 @@ loaded only after the visitor presses Download and enable model.
 - **transformers.js 4.3.1** (`@huggingface/transformers`, Apache License 2.0) is vendored as
   `vendor/transformers-4.3.1.min.js` (unchanged release file, SHA-256 `8d6716d9…e743`), with its licence in
   `vendor/LICENSE-transformers.txt`.
-- **onnxruntime-web** (MIT License), the WebAssembly runtime it uses, is fetched at run time from cdn.jsdelivr.net
+- **onnxruntime-web** (MIT License), the WebAssembly and WebGPU runtime it uses, is fetched at run time from cdn.jsdelivr.net
   (pinned `1.31.0-dev.20260914-8d85527a0`) and is not included.
 - **Qwen3-0.6B** (Apache License 2.0), in the ONNX build `onnx-community/Qwen3-0.6B-ONNX`, is fetched at run time from
   Hugging Face (pinned revision `58ca03a5…`, file `onnx/model_int8.onnx`) and is not included. The ONNX build states no

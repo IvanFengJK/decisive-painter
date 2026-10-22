@@ -11,7 +11,7 @@ One third-party file is included: `web/vendor/transformers-4.3.1.min.js` (transf
 licence in `web/vendor/LICENSE-transformers.txt`), loaded only after the visitor presses Download and enable model, inside the model's
 Worker. Model mode then fetches at run time, and nothing of it is included:
 
-- **onnxruntime-web** `1.31.0-dev.20260914-8d85527a0` (MIT License) from cdn.jsdelivr.net: the WebAssembly runtime.
+- **onnxruntime-web** `1.31.0-dev.20260914-8d85527a0` (MIT License) from cdn.jsdelivr.net: the WebAssembly and WebGPU runtime (one build).
 - **Qwen3-0.6B**, ONNX build `onnx-community/Qwen3-0.6B-ONNX` at revision `58ca03a5e7b354b480b1a82b34bde8dc7b854cc0`,
   file `onnx/model_int8.onnx` (about 618 MB) plus its tokenizer and config, from huggingface.co. Licence checked on
   2026-10-22: the base model `Qwen/Qwen3-0.6B` is released under the **Apache License 2.0** (its model card says
