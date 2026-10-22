@@ -37,6 +37,43 @@
           <span id="slot-tip" class="tip" role="tooltip">Any Director can answer these questions; a model plugs in through the Director interface and is named here.</span></p>
       </div>
     </div>
+    <p class="mode-label">Choose how it draws</p>
+    <div class="tabs" role="tablist" aria-label="Way of drawing">
+      <button type="button" role="tab" id="tab-gesture" aria-selected="true" aria-controls="panel-gesture">Gesture</button>
+      <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">Probability map</button>
+    </div>
+    <form id="prompt-form" class="prompt-row" novalidate>
+      <label for="prompt" class="sr-only">Scene to paint</label>
+      <input id="prompt" name="prompt" type="text" maxlength="80" autocomplete="off" spellcheck="true"
+             placeholder="a harbour at dawn" aria-describedby="prompt-help">
+      <button type="submit" id="paint" class="primary">Paint</button>
+    </form>
+    <div class="row seed-row seed-near-prompt">
+      <label for="seed">Seed</label>
+      <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Auto" aria-describedby="seed-help">
+      <p id="seed-help" class="help">A seed is a number that lets you recreate the same painting; leave it blank to choose one automatically.</p>
+    </div>
+    <p id="prompt-help" class="help">Describe a scene in a few words. The painting is abstract, not a literal picture.</p>
+    <fieldset id="decider" class="decider" aria-describedby="model-help">
+      <legend>Who decides?</legend>
+      <div class="seg" role="presentation">
+        <input type="radio" name="decider" value="rules" id="decider-rules" checked><label for="decider-rules">Rules</label>
+        <input type="radio" name="decider" value="model" id="decider-model" disabled><label for="decider-model">Model</label>
+      </div>
+      <div class="load-row">
+        <button type="button" id="load-model">Download and enable model (~650 MB)</button>
+        <button type="button" id="cancel-load" hidden>Cancel download</button>
+      </div>
+      <progress id="model-progress" max="1" value="0" hidden aria-label="Model download"></progress>
+      <p id="model-status" class="help" role="status" aria-live="polite"></p>
+      <p id="model-help" class="help">Select “Download and enable model” to start a one-time download of about 650 MB. Model turns on automatically when ready; your prompt stays on this device. A model-made Probability map can take several minutes.</p>
+    </fieldset>
+    <div class="examples" role="group" aria-label="Example scenes">
+      <span>Try an example:</span>
+      <button type="button" data-example="a harbour at dawn">Harbour at dawn</button>
+      <button type="button" data-example="a quiet moonlit garden">Moonlit garden</button>
+      <button type="button" data-example="a little house in a storm">House in a storm</button>
+    </div>
     <div class="frame" id="frame">
       <canvas id="canvas" width="600" height="600" role="img" aria-label="Blank paper, waiting for a scene"></canvas>
       <canvas id="overlay" class="overlay" width="32" height="32" aria-hidden="true" hidden></canvas>
@@ -58,6 +95,25 @@
       <button type="button" id="save" disabled>Save</button>
     </div>
     <p id="again-help" class="help again-help">Ask it again: the same words with a new seed. The variety comes from picking by the odds.</p>
+    <details id="advanced" class="panel">
+      <summary>Advanced Gesture options</summary>
+      <fieldset>
+        <legend>Picking (Gesture)</legend>
+        <label><input type="radio" name="pick" value="weighted" checked> Weighted pick (seeded)</label>
+        <label><input type="radio" name="pick" value="top"> Top pick</label>
+      </fieldset>
+      <fieldset>
+        <legend>Director (Gesture)</legend>
+        <label><input type="radio" name="director" value="rules" checked> Rules or Model (the toggle above)</label>
+        <label><input type="radio" name="director" value="endpoint"> My own endpoint</label>
+        <div id="endpoint-box" class="endpoint" hidden>
+          <p class="warning" id="endpoint-warning"><strong>Warning:</strong> with this on, your scene text and every state are sent to the URL you type. Use only a server you trust (for example one on your own computer).</p>
+          <label for="endpoint-url">Endpoint URL</label>
+          <input id="endpoint-url" type="url" placeholder="http://localhost:8787/decide" aria-describedby="endpoint-warning endpoint-help">
+          <p id="endpoint-help" class="help">It receives {state, questions} as JSON and must answer {answers: [{id, probs}]}. This page's security policy only allows servers on localhost. The Probability map tab always uses Rules or Model.</p>
+        </div>
+      </fieldset>
+    </details>
     <p id="notice" class="notice" role="status" aria-live="polite"></p>
   </section>
 
@@ -73,34 +129,7 @@
   </section>
 
   <section class="sheet" aria-label="Controls">
-    <div class="tabs" role="tablist" aria-label="Way of drawing">
-      <button type="button" role="tab" id="tab-gesture" aria-selected="true" aria-controls="panel-gesture">Gesture</button>
-      <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">Probability map</button>
-    </div>
-
-    <form id="prompt-form" class="prompt-row" novalidate>
-      <label for="prompt" class="sr-only">Scene to paint</label>
-      <input id="prompt" name="prompt" type="text" maxlength="80" autocomplete="off" spellcheck="true"
-             placeholder="a harbour at dawn" aria-describedby="prompt-help">
-      <button type="submit" id="paint" class="primary">Paint</button>
-    </form>
-    <p id="prompt-help" class="help">Up to 80 characters. Abstract, scene-like pictures. By default authored rules decide everything; Model mode is optional.</p>
     <p id="reading" class="reading" aria-live="polite"></p>
-
-    <fieldset id="decider" class="decider" aria-describedby="model-help">
-      <legend>Decision-maker</legend>
-      <div class="seg" role="presentation">
-        <input type="radio" name="decider" value="rules" id="decider-rules" checked><label for="decider-rules">Rules</label>
-        <input type="radio" name="decider" value="model" id="decider-model" disabled><label for="decider-model">Model</label>
-      </div>
-      <div class="load-row">
-        <button type="button" id="load-model">Load model, about 650 MB, runs in your browser, nothing is sent to a server</button>
-        <button type="button" id="cancel-load" hidden>Cancel loading</button>
-      </div>
-      <progress id="model-progress" max="1" value="0" hidden aria-label="Model download"></progress>
-      <p id="model-status" class="help" role="status" aria-live="polite"></p>
-      <p id="model-help" class="help">Rules are instant and need no download. Model mode runs Qwen3-0.6B, a small general language model, inside this tab. On the Gesture tab it chooses the recipe (mood, harmony, hue family, value key, saturation, composition; about 40 s) and the marks follow the authored weights. On the Probability map tab it gives the odds for each cell of a coarse grid (6x6: 36 questions, about 6 minutes on a desktop), interpolated to the full grid.</p>
-    </fieldset>
 
     <div id="panel-gesture" role="tabpanel" aria-labelledby="tab-gesture" class="panel-tab">
       <fieldset class="styles" aria-describedby="style-about-gesture">
@@ -134,37 +163,35 @@
         <input id="grid" type="range" min="16" max="48" step="1" value="32" aria-describedby="map-estimate">
         <p id="map-estimate" class="help">The rules fill every cell at once.</p>
       </div>
-      <fieldset class="row">
-        <legend>Pixel cell colour</legend>
+      <fieldset id="pixel-options" class="row">
+        <legend>Pixel colour</legend>
         <div class="seg">
           <input type="radio" name="sample" value="likely" id="sm-likely" checked><label for="sm-likely">Most likely</label>
-          <input type="radio" name="sample" value="sampled" id="sm-sampled"><label for="sm-sampled">Sampled</label>
+          <input type="radio" name="sample" value="sampled" id="sm-sampled"><label for="sm-sampled">Sample from odds</label>
         </div>
+        <p class="help">Most likely makes clean blocks; sampling shows more of each cell's colour probabilities.</p>
       </fieldset>
-      <div class="row check-row">
-        <input type="checkbox" id="certainty" aria-describedby="certainty-help"><label for="certainty">Show certainty</label>
-        <p id="certainty-help" class="help">Bright cells are sure of their colour, dark cells are unsure (brightness = 1 - normalised entropy).</p>
-      </div>
-      <fieldset class="row model-map" aria-describedby="coarse-help">
-        <legend>Model mode on the map</legend>
-        <label for="coarse">Coarse grid</label>
+      <details class="panel map-explore">
+        <summary>Explore the probabilities</summary>
+        <div class="row check-row">
+          <input type="checkbox" id="certainty" aria-describedby="certainty-help"><label for="certainty">Show certainty overlay</label>
+          <p id="certainty-help" class="help">Brighter areas have more concentrated colour odds; darker areas are less certain.</p>
+        </div>
+      </details>
+      <details id="model-map-options" class="panel model-map">
+        <summary>Model map settings</summary>
+        <label for="coarse">Decision grid</label>
         <select id="coarse">
-          <option value="4">4 x 4 (16 questions)</option>
-          <option value="6" selected>6 x 6 (36 questions)</option>
-          <option value="8">8 x 8 (64 questions)</option>
+          <option value="4">4 × 4 · 16 cell decisions · quicker, broader regions</option>
+          <option value="6" selected>6 × 6 · 36 cell decisions</option>
+          <option value="8">8 × 8 · 64 cell decisions · more detail, longer wait</option>
         </select>
         <div class="check-row">
-          <input type="checkbox" id="blend"><label for="blend">Blend with rules</label>
+          <input type="checkbox" id="blend"><label for="blend">Blend the model map with Rules (50/50)</label>
         </div>
-        <p id="coarse-help" class="help">Used only in Model mode: the model answers one question per coarse cell and the odds are interpolated smoothly to the full grid. Blend mixes in the rules' map half and half.</p>
-      </fieldset>
-      <p class="help map-note"><strong>Honest note:</strong> a small model deciding every cell is the hardest job here; expect rough results. In earlier tests small models drifted towards dull, mid-value palettes, and the rules usually look better.</p>
-    </div>
-
-    <div class="row seed-row">
-      <label for="seed">Seed</label>
-      <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="from the text" aria-describedby="seed-help">
-      <p id="seed-help" class="help">Same scene, seed, marks or grid, style and version give the same painting.</p>
+        <p id="coarse-help" class="help">The model answers cells in sequence, then the odds are smoothly expanded to your full map. A smaller grid is faster; a larger grid gives it more decisions to make.</p>
+      </details>
+      <p id="model-map-note" class="help map-note"><strong>Honest note:</strong> a small model deciding every cell is the hardest job here; expect rough results. In earlier tests small models drifted towards dull, mid-value palettes, and the rules usually look better.</p>
     </div>
 
     <details id="look" class="panel">
@@ -173,32 +200,12 @@
       <div id="look-fields" class="look-fields"></div>
     </details>
 
-    <details id="sees" class="panel sees" open>
-      <summary>What the decision-maker sees</summary>
+    <details id="sees" class="panel sees">
+      <summary>Inspect decisions and model input</summary>
       <p id="sees-help" class="help">The state text it reads before each mark (with the 5&times;5 canvas words) and the answers it gave.</p>
       <pre id="state-text" class="state-text" tabindex="0" aria-label="State text">No painting yet.</pre>
       <h3 class="small" id="answers-title">Its answers for the last mark</h3>
       <ul id="answers" class="answers"></ul>
-    </details>
-
-    <details id="advanced" class="panel">
-      <summary>Advanced</summary>
-      <fieldset>
-        <legend>Picking (Gesture)</legend>
-        <label><input type="radio" name="pick" value="weighted" checked> Weighted pick (seeded)</label>
-        <label><input type="radio" name="pick" value="top"> Top pick</label>
-      </fieldset>
-      <fieldset>
-        <legend>Director (Gesture)</legend>
-        <label><input type="radio" name="director" value="rules" checked> Rules or Model (the toggle above)</label>
-        <label><input type="radio" name="director" value="endpoint"> My own endpoint</label>
-        <div id="endpoint-box" class="endpoint" hidden>
-          <p class="warning" id="endpoint-warning"><strong>Warning:</strong> with this on, your scene text and every state are sent to the URL you type. Use only a server you trust (for example one on your own computer).</p>
-          <label for="endpoint-url">Endpoint URL</label>
-          <input id="endpoint-url" type="url" placeholder="http://localhost:8787/decide" aria-describedby="endpoint-warning endpoint-help">
-          <p id="endpoint-help" class="help">It receives {state, questions} as JSON and must answer {answers: [{id, probs}]}. This page's security policy only allows servers on localhost. The Probability map tab always uses Rules or Model.</p>
-        </div>
-      </fieldset>
     </details>
 
     <details id="gallery" class="panel">

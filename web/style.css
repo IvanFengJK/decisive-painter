@@ -91,6 +91,7 @@ a { color: var(--fg); text-underline-offset: 3px; }
 .tip-btn:hover + .tip, .tip-btn:focus + .tip { display: block; }
 .badge-note { margin: 0; font-size: 0.75rem; color: var(--muted); max-width: 34ch; text-align: right; }
 .decider { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); }
+.stage .decider { background: var(--surface); }
 .decider legend { padding: 0 4px; font-weight: 600; font-size: 0.95rem; }
 .decider .seg { margin: 2px 0 10px; }
 .decider progress { display: block; width: 100%; margin-top: 8px; }
@@ -103,6 +104,14 @@ a { color: var(--fg); text-underline-offset: 3px; }
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 6px 20px rgb(60 40 20 / 0.10);
   overflow: hidden;
 }
+.mode-label { margin: 12px 0 4px; font-size: 0.8125rem; font-weight: 650; color: var(--muted); }
+.stage > .prompt-row { margin: 0; }
+.seed-near-prompt { margin: 6px 0 0; grid-template-columns: 42px minmax(90px, 160px); justify-content: start; gap: 4px 8px; }
+.seed-near-prompt .help { grid-column: 1 / -1; }
+.stage > #prompt-help { margin-top: 5px; }
+.examples { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 12px; color: var(--muted); font-size: 0.8125rem; }
+.examples span { margin-right: 2px; }
+.examples button { min-height: 34px; padding: 4px 10px; border-radius: 999px; font-size: 0.8125rem; }
 canvas { display: block; width: 100%; height: 100%; }
 canvas.pixelated { image-rendering: pixelated; image-rendering: crisp-edges; }
 
@@ -125,6 +134,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
 .transport button { flex: 1 1 auto; }
 
 .notice { min-height: 1.5em; margin: 8px 0 0; font-size: 0.95rem; overflow-wrap: anywhere; }
+.stage #advanced { margin-top: 8px; }
 
 /* ---------------------------------------------------------------------------------------- the odds panel */
 .odds { margin-top: 14px; }

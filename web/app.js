@@ -104,6 +104,8 @@ function updateEstimate() {
     ? `The model reads your words first (six questions, about ${fmtMin(6 * (slot.director?.msPerQuestion || 10000))}); then about ${s} second${s === 1 ? "" : "s"} for the marks.`
     : `About ${s} second${s === 1 ? "" : "s"} on this device (measured here).`;
   const n = app.coarse * app.coarse;
+  $("model-map-options").hidden = slot.mode !== "model" || app.tab !== "map";
+  $("model-map-note").hidden = slot.mode !== "model" || app.tab !== "map";
   $("map-estimate").textContent = slot.mode === "model"
     ? `Model mode: ${n} questions on a ${app.coarse}x${app.coarse} grid, about ${fmtMin(n * (slot.director?.msPerQuestion || 10000))} on this device.`
     : `The rules fill every cell at once (about ${Math.max(1, Math.round(app.mapMs[app.style.map] / 1000))} s with this style).`;
@@ -741,6 +743,7 @@ async function renderMapThumbs() {
 function showStyles() {
   setRadio("style-gesture", app.legacy ? "" : app.style.gesture);
   setRadio("style-map", app.style.map);
+  $("pixel-options").hidden = app.style.map !== "pixel";
   $("legacy-note").hidden = !app.legacy;
   $("legacy-note").textContent = app.legacy
     ? "This old link uses the retired Paint look (the old Brush media), drawn exactly as before. Pick a style to redraw it." : "";
@@ -766,6 +769,7 @@ function setTab(tab, { paint = true } = {}) {
   $("map-help").hidden = !m;
   $("pause").hidden = m;
   $("step").hidden = m;
+  $("advanced").hidden = m;
   $("again-help").textContent = m
     ? "Ask it again: the same words and odds with a new seed. The variety comes from the seeded draws."
     : "Ask it again: the same words with a new seed. The variety comes from picking by the odds.";
@@ -900,9 +904,10 @@ function askAgain() {
 
 function readSeed(text) {
   const raw = $("seed").value.trim();
-  if (raw === "") {
+  if (raw === "" || app.seedFromText) {
     app.seed = seedFor(text);
     app.seedFromText = true;
+    $("seed").value = String(app.seed);
     return;
   }
   const v = clampInt(raw.replace(/\D/g, ""), 0, SEED_MAX, 0);
@@ -918,6 +923,7 @@ let loadAbort = null;
 async function loadModelClicked() {
   const btn = $("load-model");
   btn.disabled = true;
+  btn.textContent = "Downloading model…";
   $("cancel-load").hidden = false;
   $("model-progress").hidden = false;
   $("model-progress").value = 0;
@@ -933,7 +939,7 @@ async function loadModelClicked() {
   $("cancel-load").hidden = true;
   if (state === "ready") {
     const i = slot.director.info;
-    btn.textContent = "Model loaded";
+    btn.textContent = "Model enabled";
     $("decider-model").disabled = false;
     setRadio("decider", "model");
     $("model-status").textContent = `Loaded ${i.name} (${i.dtype}, ${i.mb} MB, ${i.backend}) in ${i.loadSeconds} s${i.cached ? "; kept in this browser's cache" : ""}. Model mode is on.`;
@@ -941,7 +947,7 @@ async function loadModelClicked() {
     afterDeciderChange();
   } else {
     btn.disabled = false;
-    btn.textContent = "Try loading the model again (about 650 MB)";
+    btn.textContent = "Retry download and enable model (~650 MB)";
     setRadio("decider", "rules");
     $("model-status").textContent = `Model mode is not available: ${slot.error}. The rules stay on.`;
     if (app.painted) showBadge(app.painted.director, app.painted);
@@ -1149,6 +1155,16 @@ function openFromHash() {
 // ------------------------------------------------------------------------------------------------ wiring
 function wire() {
   $("prompt-form").addEventListener("submit", onPaint);
+  $("seed").addEventListener("input", () => {
+    const value = $("seed").value.trim();
+    app.seedFromText = value === "" || value === String(app.seed);
+  });
+  for (const button of document.querySelectorAll("[data-example]")) {
+    button.addEventListener("click", () => {
+      $("prompt").value = button.dataset.example;
+      $("prompt-form").requestSubmit();
+    });
+  }
   const tabs = ["tab-gesture", "tab-map"];
   $("tab-gesture").addEventListener("click", () => setTab("gesture"));
   $("tab-map").addEventListener("click", () => setTab("map"));
