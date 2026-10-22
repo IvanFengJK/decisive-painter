@@ -6,7 +6,8 @@ All code, tables, word lists, recipes, guardrail lists and wording in `web/` wer
 or ported from our own earlier rounds (the Round 12 renderer and lists, the Round 14 phase menus and code rules, the
 Round 15 palette engine). Licence: the repository's licence (see `LICENSE` at the repository root).
 
-No third-party code, fonts, images or scripts are included or loaded.
+No third-party code, fonts, images or scripts are included or loaded, except Model mode's vendored library below, which is
+loaded only after the visitor presses Load model.
 
 ## Numbers computed from model outputs
 
@@ -18,6 +19,19 @@ No third-party code, fonts, images or scripts are included or loaded.
 - No other model's outputs are used. In particular, the Round 14 phase prior and the Round 15 role tables (which were
   informed by another service's cached decisions) are **not** used anywhere in the site.
 
+## Model mode (loaded only after the visitor presses Load model)
+
+- **transformers.js 4.3.1** (`@huggingface/transformers`, Apache License 2.0) is vendored as
+  `vendor/transformers-4.3.1.min.js` (unchanged release file, SHA-256 `8d6716d9…e743`), with its licence in
+  `vendor/LICENSE-transformers.txt`.
+- **onnxruntime-web** (MIT License), the WebAssembly runtime it uses, is fetched at run time from cdn.jsdelivr.net
+  (pinned `1.31.0-dev.20260914-8d85527a0`) and is not included.
+- **Qwen3-0.6B** (Apache License 2.0), in the ONNX build `onnx-community/Qwen3-0.6B-ONNX`, is fetched at run time from
+  Hugging Face (pinned revision `58ca03a5…`, file `onnx/model_int8.onnx`) and is not included. The ONNX build states no
+  licence of its own and names `Qwen/Qwen3-0.6B` (Apache License 2.0) as its base model. No model weights are in this
+  repository.
+
 ## Credit
 
-The idea's credit is on the About page (`about.html`, section Credit). No code or lists from that project are used.
+On the About page (`about.html`, section Credits): the project that inspired gesture-level decisions and the one that
+inspired per-cell probabilities and the impasto look. No code, lists or wording from either project are used.

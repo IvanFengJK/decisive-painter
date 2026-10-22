@@ -66,7 +66,7 @@ paths point to the files here, and two entries about the research repository and
   letter-joining swallowing the article "a"); a SECOND held-out set (30 + 30) was then committed and run once (v.6):
   0/30, 1/30 ("ex wife" without a hyphen); that pattern was fixed (v.7). All three sets now pass fully, but only the
   blind numbers above are honest generalisation estimates.
-- **D19 Be the director** (called "Be the art director" until v1.1.0). A HumanDirector implements the same interface; each question is a select pre-filled
+- **D19 Be the director** (removed in v2; called "Be the art director" until v1.1.0). A HumanDirector implements the same interface; each question is a select pre-filled
   with a weighted pick from the RuleDirector (the die re-rolls one; "Let the director choose all" re-rolls all). In this
   mode the state panel shows the state being decided, not the previous one.
 - **D20 Colour count (T3).** Distinct colours after quantising each channel to steps of 24 and ignoring colours under
@@ -105,3 +105,28 @@ paths point to the files here, and two entries about the research repository and
   main working tree (which must stay unchanged) and not in this repository.
 - **R10 Phase B** (deletions) was skipped: `../cleanup-approved.txt` does not exist.
 - **R11 Screenshots** in `docs/img/` are the site's own paintings from the Round 17 test run (RuleDirector, no model).
+
+## Version 2: two tabs and a browser model
+
+- **V1 Two ways to draw.** Gesture (the existing method) and Probability map (per-cell odds over the six palette roles).
+  Each has its own styles: Brush, Sketch, Pixel; Pixel, Impasto. Defaults: Brush and Impasto. "Be the art director"
+  was removed.
+- **V2 Brush and old links.** Brush is the old Paint marks with the five media reworked (`web/brush.js`). Version 1 Paint
+  links are drawn by the unchanged old Paint code, so their pixels stay identical; they open on the Gesture tab with a
+  note and keep their v=1 link.
+- **V3 Model mode is int8 on WebAssembly in a Worker.** No WebGPU 4-bit build (it changed top picks a lot). The Worker
+  keeps the page responsive while the model reads.
+- **V4 What the model decides.** Gesture: the six recipe questions; the marks follow the authored weights. Map: one
+  colour question per cell of a coarse grid (4x4, 6x6 or 8x8), interpolated bilinearly to the full grid, optionally
+  blended 50/50 with the rules; the Map tab's recipe comes from the rules' reading. "Model decides marks too" is not
+  offered (about 20 minutes per painting).
+- **V5 The badge is about the painting on screen.** A recipe the model did not choose is painted by the rules and the
+  badge says Rules; on the Map tab the rules' map stays (with a Rules badge) until Paint asks the model.
+- **V6 The map's cell prompt for the model is short** (prompt length is the cost on WebAssembly). The full state text
+  (request, recipe in words, palette, composition, grid size, cell position) is what remote directors and the state
+  panel see. Prefix key/value caching was tried and dropped: its logits did not match the full prompt.
+- **V7 Long tasks.** Brush marks run in slices (a generator that yields between blurs, line sets and the composite) and
+  Impasto composites in ~30 ms slices between animation frames; pixels do not depend on the slicing.
+- **V8 Share links v2** carry tab, style, recipe, seed, and budget and pick (Gesture) or grid, sampling and coarse grid
+  (Map); never text or model output; every link opens with the rules.
+- **V9 Download and Save** wait for a finished picture (disabled during a run).

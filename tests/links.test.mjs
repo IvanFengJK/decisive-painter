@@ -11,8 +11,9 @@ const fixture = JSON.parse(readFileSync(new URL("./fixtures/v1.0.0-links.json", 
 for (const link of fixture.links) {
   test(`v1.0.0 link still paints the same pixels: ${link.skin}, ${link.mode}, ${link.budget} marks`, async () => {
     const r = decodeShare(link.hash);
+    assert.equal(r.tab, "gesture");
     let last;
-    for await (const s of paintSteps({ prompt: "x", look: r.look, seed: r.seed, budget: r.budget, skin: r.skin, director: new RuleDirector(), mode: r.mode })) last = s;
+    for await (const s of paintSteps({ prompt: "x", look: r.look, seed: r.seed, budget: r.budget, skin: r.style, director: new RuleDirector(), mode: r.mode })) last = s;
     assert.equal(createHash("sha256").update(last.painter.view().rgba()).digest("hex"), link.sha256);
   });
 }

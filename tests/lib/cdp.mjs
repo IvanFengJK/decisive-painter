@@ -89,7 +89,7 @@ export class Browser {
   async close() {
     try { await this.send("Browser.close"); } catch { /* already gone */ }
     this.proc.kill("SIGKILL");
-    rmSync(this.dir, { recursive: true, force: true });
+    rmSync(this.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
 }
 
@@ -110,7 +110,7 @@ export class Page {
     await this.send("Runtime.enable");
     await this.send("Log.enable");
     await this.send("Network.enable");
-    this.on("Network.requestWillBeSent", (e) => this.requests.push({ url: e.request.url, t: Date.now() }));
+    this.on("Network.requestWillBeSent", (e) => this.requests.push({ url: e.request.url, method: e.request.method, body: e.request.postData || "", t: Date.now() }));
     this.on("Runtime.consoleAPICalled", (e) => {
       if (e.type === "error" || e.type === "warning") this.errors.push(`console.${e.type}: ${e.args.map((a) => a.value ?? a.description).join(" ")}`);
     });
@@ -126,6 +126,22 @@ export class Page {
         "Object.defineProperty(window,'localStorage',{get(){throw new DOMException('blocked by test','SecurityError')}});" +
         "Object.defineProperty(window,'indexedDB',{get(){throw new DOMException('blocked by test','SecurityError')}});" });
     }
+  }
+
+  /**
+   * Reroute or block requests to the model hosts. decide(url) returns a new URL (served instead, unseen by the page),
+   * "block" (the request fails as if the network refused it), or null (the request goes out unchanged).
+   * patterns: the URLs to intercept (["*"] sees every request, including those of the page's workers).
+   */
+  async route(decide, patterns = ["https://huggingface.co/*", "https://*.hf.co/*", "https://cdn.jsdelivr.net/*"]) {
+    this.routed = [];
+    await this.send("Fetch.enable", { patterns: patterns.map((urlPattern) => ({ urlPattern })) });
+    this.on("Fetch.requestPaused", (e) => {
+      const r = decide(e.request.url);
+      this.routed.push({ url: e.request.url, to: r, body: e.request.postData || "" });
+      if (r === "block") this.send("Fetch.failRequest", { requestId: e.requestId, errorReason: "BlockedByClient" }).catch(() => {});
+      else this.send("Fetch.continueRequest", { requestId: e.requestId, ...(r ? { url: r } : {}) }).catch(() => {});
+    });
   }
 
   async goto(url) {

@@ -36,3 +36,16 @@ Python reference renderer is in [harness/](../harness/).
 
 Credit: the idea of a painter driven by a model's typed answers comes from danmana/jev-paints
 (github.com/danmana/jev-paints). This project does not use its code or lists.
+
+Round 23 added Model mode on a branch: Qwen3-0.6B, a general small model, scoring the six recipe questions in the tab.
+It worked (about 6.5 s per question, about 40 s per recipe) but its recipes were weaker than the rules', which was
+accepted: the point is to learn how a decision model runs on the edge.
+
+Version 2 merged that branch and turned the page into two ways to draw with a decision-maker. **Gesture** is the
+existing method (one mark at a time from menus), with the old Paint skin reworked as **Brush** so the five media look
+different, and Sketch and Pixel unchanged. **Probability map** is new: the decision-maker gives odds over the six
+palette roles for every cell of a grid, drawn as **Pixel** or **Impasto**; the per-cell probabilities and the impasto
+look are inspired by achimala/jev-paint (github.com/achimala/jev-paint), written here from a description of the idea
+without its code or wording. A Rules | Model toggle sits on both tabs; the model runs in a Worker and, on the map,
+answers a coarse grid that is interpolated. "Be the art director" was removed. Share links moved to version 2; version
+1 links still open with identical pixels.
